@@ -1,0 +1,8 @@
+node_modules
+.DS_Store
+dist
+.env
+docs
+.claude
+.vscode
+.code-review-graph

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "campaignlens",
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "entry": "entry.html",
+        "inline": true,
+        "height": "tall"
+      }
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Open CampaignLens Atlas",
+        "description": "Open the campaign intelligence dashboard for this subreddit.",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/open-atlas"
+      }
+    ]
+  },
+  "triggers": {
+    "onPostSubmit": "/internal/triggers/on-post-submit",
+    "onCommentSubmit": "/internal/triggers/on-comment-submit",
+    "onPostReport": "/internal/triggers/on-post-report",
+    "onCommentReport": "/internal/triggers/on-comment-report",
+    "onModAction": "/internal/triggers/on-mod-action",
+    "onAutomoderatorFilterPost": "/internal/triggers/on-automod-filter-post",
+    "onAutomoderatorFilterComment": "/internal/triggers/on-automod-filter-comment",
+    "onPostDelete": "/internal/triggers/on-post-delete",
+    "onCommentDelete": "/internal/triggers/on-comment-delete"
+  },
+  "scripts": {
+    "build": "npm run clean && vite build",
+    "dev": "npm run clean && vite build --watch --emptyOutDir false"
+  },
+  "permissions": {
+    "reddit": {
+      "enable": true,
+      "scope": "moderator",
+      "asUser": ["SUBMIT_POST"]
+    },
+    "redis": true,
+    "realtime": true
+  },
+  "dev": {
+    "subreddit": "campaignlens_dev"
+  }
+}

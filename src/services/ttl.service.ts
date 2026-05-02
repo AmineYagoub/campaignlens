@@ -1,0 +1,9 @@
+export const TTL = {
+  SEEN_DAYS: 7 * 24 * 3600,
+  DELETED_HOURS: 72 * 3600,
+  BLOOM_VERSION: 7 * 24 * 3600,
+  BASELINE_DAYS: 30 * 24 * 3600,
+  EVIDENCE_DAYS: 7 * 24 * 3600,
+  DOSSIER_DAYS: 30 * 24 * 3600,
+  CONFIG_DAYS: 30 * 24 * 3600,
+} as const;
