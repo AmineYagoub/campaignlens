@@ -2,9 +2,11 @@ import { useDossier } from '../hooks/useDossier';
 import { ScoreBreakdown } from '../components/ScoreBreakdown';
 import { EvidenceCard } from '../components/EvidenceCard';
 import { TimelineCard } from '../components/TimelineCard';
-import { ActionBar } from '../components/ActionBar';
+import { FeedbackBar } from '../components/FeedbackBar';
+import { ModerationActionPanel } from '../components/ModerationActionPanel';
 import { ReplayGraphCard } from '../components/ReplayGraphCard';
 import { useReplay } from '../hooks/useReplay';
+import { CATEGORY_STYLES, categoryLabel } from '../components/category';
 
 type Props = {
   dossierId: string;
@@ -41,8 +43,11 @@ export function DossierDetailScreen({ dossierId, onBack }: Props) {
 
         <div className="mb-4">
           <h2 className="text-base font-semibold text-gray-900 mb-1">{signalLabel}</h2>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
             <span className="capitalize">{dossier.status.replace('_', ' ').toLowerCase()}</span>
+            <span className={`rounded-full px-2 py-0.5 capitalize ${CATEGORY_STYLES[dossier.category]}`}>
+              {categoryLabel(dossier.category)}
+            </span>
             <span>&middot;</span>
             <span>Updated {new Date(dossier.updatedAt).toLocaleString()}</span>
           </div>
@@ -102,8 +107,9 @@ export function DossierDetailScreen({ dossierId, onBack }: Props) {
         )}
       </div>
 
-      <div className="mt-auto sticky bottom-0">
-        <ActionBar dossierId={dossierId} onAction={refresh} />
+      <div className="mt-auto">
+        <ModerationActionPanel dossierId={dossierId} examples={dossier.examples} onExecuted={refresh} />
+        <FeedbackBar dossierId={dossierId} onFeedback={refresh} />
       </div>
     </div>
   );

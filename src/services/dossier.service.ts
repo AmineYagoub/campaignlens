@@ -1,4 +1,3 @@
-import { realtime } from '@devvit/web/server';
 import type {
   EvidenceDossier,
   EvidenceSample,
@@ -7,6 +6,7 @@ import type {
   DossierTimelineItem,
   DossierStatus,
   CampaignShapeScore,
+  CampaignCategory,
 } from '../types/dossier';
 import type { CampaignLensConfig, BaselineMode } from '../types/config';
 import { calculateCampaignScore, generateExplanationBullets, isHighConfidence } from './scoring.service';
@@ -14,11 +14,12 @@ import { getConfig } from './config.service';
 import { getBaselineMode, getBaselineZScore } from './baseline.service';
 import { hourBucket, dossierKey, DOSSIERS_ACTIVE_KEY, evidenceSignalIndexKey, reportCounterKey } from './redis-keys.service';
 import { TTL } from './ttl.service';
-import { safeGet, safeSet, safeExpire, safeZAdd, safeZRange, safeZRem } from './redis-safe.service';
+import { safeGet, safeSet, safeExpire, safeZAdd, safeZRange, safeZRem } from '../devvit/redis-client';
+import { sendRealtime } from '../devvit/realtime-client';
+import { DOSSIER_UPDATES_CHANNEL } from '../devvit/realtime-channels';
 import { isAllowlistedSignal, isWatchedSignal } from './signal-list.service';
 import { getEffectiveCaps } from './memory-pressure.service';
-
-const DOSSIER_UPDATES_CHANNEL = 'dossier_updates';
+import { isCampaignLensInternalDossier } from './internal-content.service';
 
 function toExamples(samples: EvidenceSample[], max: number): DossierExample[] {
   return samples.slice(0, max).map((s) => ({
@@ -53,10 +54,8 @@ function computeSketchAggregates(samples: EvidenceSample[], localBaselineZScore:
   );
 
   const timestamps = samples.map((s) => s.createdAt);
-  const timeSpanMinutes =
-    timestamps.length >= 2
-      ? (Math.max(...timestamps) - Math.min(...timestamps)) / 60_000
-      : 0;
+  const timeSpan = timestampSpan(timestamps);
+  const timeSpanMinutes = timeSpan ? (timeSpan.max - timeSpan.min) / 60_000 : 0;
 
   return {
     domainMentions,
@@ -64,6 +63,39 @@ function computeSketchAggregates(samples: EvidenceSample[], localBaselineZScore:
     timeSpanMinutes,
     localBaselineZScore,
   };
+}
+
+function timestampSpan(timestamps: number[]): { min: number; max: number } | null {
+  if (timestamps.length < 2) return null;
+
+  let min = timestamps[0]!;
+  let max = timestamps[0]!;
+  for (const timestamp of timestamps.slice(1)) {
+    if (timestamp < min) min = timestamp;
+    if (timestamp > max) max = timestamp;
+  }
+  return { min, max };
+}
+
+export function clusterKeysForEvidence(evidence: EvidenceSample): string[] {
+  const domainKeys = preferSpecificDomainKeys(
+    evidence.signalKeys.filter((key) => key.startsWith('domain:'))
+  );
+  if (domainKeys.length > 0) return domainKeys;
+  return [...new Set(evidence.signalKeys.filter((key) => key.startsWith('brand:')))];
+}
+
+function preferSpecificDomainKeys(keys: string[]): string[] {
+  const unique = [...new Set(keys)];
+  return unique.filter((candidate) => {
+    const candidateValue = candidate.slice('domain:'.length);
+    return !unique.some((other) => {
+      if (candidate === other) return false;
+      const otherValue = other.slice('domain:'.length);
+      return otherValue.endsWith(candidateValue)
+        && otherValue.at(-(candidateValue.length + 1)) === '-';
+    });
+  });
 }
 
 async function loadClusterEvidence(
@@ -108,7 +140,7 @@ export async function processEventForClusters(evidence: EvidenceSample): Promise
   const windowMs = config.windowMinutes * 60 * 1000;
   const baselineMode = await getBaselineMode();
 
-  for (const signalKey of evidence.signalKeys) {
+  for (const signalKey of clusterKeysForEvidence(evidence)) {
     if (isAllowlistedSignal(signalKey, config)) continue;
 
     const clusterSamples = await loadClusterEvidence(signalKey, windowMs, now);
@@ -145,7 +177,11 @@ export async function upsertDossier(
 
   const examples = toExamples(samples, config.maxExamplesPerDossier);
   const timeline = toTimeline(samples);
+  const category = categorizeCampaign(clusterKey, samples, config);
   const explanationBullets = generateExplanationBullets(score, samples, clusterKey);
+  if (category === 'POSSIBLE_HARMFUL_NARRATIVE') {
+    explanationBullets.push('Category: possible harmful narrative matched moderator-configured watch terms');
+  }
   if (isWatchedSignal(clusterKey, config)) {
     explanationBullets.push('Watchlist match: this signal is configured for closer review');
   }
@@ -161,6 +197,7 @@ export async function upsertDossier(
         dossier = {
           ...existing,
           score,
+          category,
           examples,
           timeline,
           explanationBullets,
@@ -168,21 +205,23 @@ export async function upsertDossier(
           updatedAt: now,
         };
       } catch {
-        dossier = buildNewDossier(clusterKey, score, status, examples, timeline, explanationBullets, now);
+        dossier = buildNewDossier(clusterKey, score, category, status, examples, timeline, explanationBullets, now);
       }
     } else {
-      dossier = buildNewDossier(clusterKey, score, status, examples, timeline, explanationBullets, now);
+      dossier = buildNewDossier(clusterKey, score, category, status, examples, timeline, explanationBullets, now);
     }
   } else {
-    dossier = buildNewDossier(clusterKey, score, status, examples, timeline, explanationBullets, now);
+    dossier = buildNewDossier(clusterKey, score, category, status, examples, timeline, explanationBullets, now);
   }
 
   const wrote = await safeSet(dossierKey(dossier.id), JSON.stringify(dossier));
-  if (wrote) await safeExpire(dossierKey(dossier.id), getEffectiveCaps(config).dossierTTLDays * 24 * 3600);
+  if (!wrote) throw new Error('Failed to persist dossier.');
+  await safeExpire(dossierKey(dossier.id), getEffectiveCaps(config).dossierTTLDays * 24 * 3600);
 
-  await safeZAdd(DOSSIERS_ACTIVE_KEY, { member: dossier.id, score: dossier.score.total });
+  const indexed = await safeZAdd(DOSSIERS_ACTIVE_KEY, { member: dossier.id, score: dossier.score.total });
+  if (!indexed) throw new Error('Failed to index active dossier.');
   try {
-    await realtime.send(DOSSIER_UPDATES_CHANNEL, { dossierId: dossier.id, action: 'updated' });
+    await sendRealtime(DOSSIER_UPDATES_CHANNEL, { dossierId: dossier.id, action: 'updated' });
   } catch (error) {
     console.warn('CampaignLens realtime dossier update failed', { dossierId: dossier.id, error });
   }
@@ -193,6 +232,7 @@ export async function upsertDossier(
 function buildNewDossier(
   clusterKey: string,
   score: CampaignShapeScore,
+  category: CampaignCategory,
   status: DossierStatus,
   examples: DossierExample[],
   timeline: DossierTimelineItem[],
@@ -203,6 +243,7 @@ function buildNewDossier(
   return {
     id,
     clusterKey,
+    category,
     status,
     score,
     signalKey: clusterKey,
@@ -212,6 +253,52 @@ function buildNewDossier(
     createdAt: now,
     updatedAt: now,
   };
+}
+
+export function categorizeCampaign(
+  clusterKey: string,
+  samples: EvidenceSample[],
+  config: CampaignLensConfig
+): CampaignCategory {
+  if (matchesHarmfulNarrativeWatchlist(clusterKey, samples, config.harmfulNarrativeWatchlist)) {
+    return 'POSSIBLE_HARMFUL_NARRATIVE';
+  }
+
+  if (
+    clusterKey.startsWith('domain:') ||
+    samples.some((sample) => sample.signalKeys.some((key) => key.startsWith('domain:')))
+  ) {
+    return 'COMMERCIAL_PROMOTION';
+  }
+
+  return 'UNKNOWN';
+}
+
+function matchesHarmfulNarrativeWatchlist(
+  clusterKey: string,
+  samples: EvidenceSample[],
+  terms: string[]
+): boolean {
+  const normalizedTerms = terms.map(normalizeWatchTerm).filter(Boolean);
+  if (normalizedTerms.length === 0) return false;
+
+  const searchable = [
+    clusterKey,
+    ...samples.flatMap((sample) => [
+      sample.shortExcerpt,
+      ...sample.signalKeys,
+      ...sample.matchedFragments,
+      ...sample.flags,
+    ]),
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return normalizedTerms.some((term) => searchable.includes(term));
+}
+
+function normalizeWatchTerm(term: string): string {
+  return term.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 async function findDossierByClusterKey(clusterKey: string): Promise<string | null> {
@@ -233,7 +320,7 @@ async function findDossierByClusterKey(clusterKey: string): Promise<string | nul
 
 export async function listActiveDossiers(): Promise<DossierSummary[]> {
   const entries = await safeZRange(DOSSIERS_ACTIVE_KEY, 0, -1, { reverse: true, by: 'rank' });
-  const summaries: DossierSummary[] = [];
+  const dossiers: EvidenceDossier[] = [];
 
   for (const entry of entries) {
     const id = entry.member;
@@ -241,32 +328,82 @@ export async function listActiveDossiers(): Promise<DossierSummary[]> {
     if (!json) continue;
     try {
       const dossier: EvidenceDossier = JSON.parse(json);
-      summaries.push({
-        id: dossier.id,
-        clusterKey: dossier.clusterKey,
-        status: dossier.status,
-        totalScore: dossier.score.total,
-        signalKey: dossier.signalKey,
-        exampleCount: dossier.examples.length,
-        createdAt: dossier.createdAt,
-        updatedAt: dossier.updatedAt,
-      });
+      if (isCampaignLensInternalDossier(dossier)) {
+        await safeZRem(DOSSIERS_ACTIVE_KEY, [id]);
+        continue;
+      }
+      dossiers.push(dossier);
     } catch {
       continue;
     }
   }
 
-  return summaries;
+  const deduped = dedupeOverlappingDossiers(dossiers);
+  const removedIds = dossiers
+    .filter((dossier) => !deduped.some((kept) => kept.id === dossier.id))
+    .map((dossier) => dossier.id);
+  if (removedIds.length > 0) await safeZRem(DOSSIERS_ACTIVE_KEY, removedIds);
+
+  return deduped.map((dossier) => ({
+    id: dossier.id,
+    clusterKey: dossier.clusterKey,
+    category: dossier.category ?? 'UNKNOWN',
+    status: dossier.status,
+    totalScore: dossier.score.total,
+    signalKey: dossier.signalKey,
+    exampleCount: dossier.examples.length,
+    createdAt: dossier.createdAt,
+    updatedAt: dossier.updatedAt,
+  }));
+}
+
+function dedupeOverlappingDossiers(dossiers: EvidenceDossier[]): EvidenceDossier[] {
+  const byEvidenceSet = new Map<string, EvidenceDossier>();
+
+  for (const dossier of dossiers) {
+    const evidenceSignature = dossier.examples
+      .map((example) => example.contentId)
+      .sort()
+      .join('|');
+    const key = evidenceSignature || dossier.id;
+    const existing = byEvidenceSet.get(key);
+
+    if (!existing || dossierRank(dossier) > dossierRank(existing)) {
+      byEvidenceSet.set(key, dossier);
+    }
+  }
+
+  return [...byEvidenceSet.values()].sort((a, b) => b.score.total - a.score.total || b.updatedAt - a.updatedAt);
+}
+
+function dossierRank(dossier: EvidenceDossier): number {
+  const value = dossier.signalKey.includes(':')
+    ? dossier.signalKey.split(':').slice(1).join(':')
+    : dossier.signalKey;
+  const kindScore = dossier.signalKey.startsWith('domain:') ? 10_000 : 0;
+  const specificityScore = value.includes('.') ? 1_000 : 0;
+  return kindScore + specificityScore + value.length;
 }
 
 export async function getDossier(id: string): Promise<EvidenceDossier | null> {
   const json = await safeGet(dossierKey(id));
   if (!json) return null;
   try {
-    return JSON.parse(json) as EvidenceDossier;
+    const dossier = JSON.parse(json) as EvidenceDossier;
+    if (isCampaignLensInternalDossier(dossier)) {
+      await safeZRem(DOSSIERS_ACTIVE_KEY, [id]);
+      return null;
+    }
+    dossier.category = dossier.category ?? inferStoredDossierCategory(dossier.clusterKey);
+    return dossier;
   } catch {
     return null;
   }
+}
+
+function inferStoredDossierCategory(clusterKey: string): CampaignCategory {
+  if (clusterKey.startsWith('domain:')) return 'COMMERCIAL_PROMOTION';
+  return 'UNKNOWN';
 }
 
 const TERMINAL_STATUSES: DossierStatus[] = ['IGNORED', 'BENIGN', 'CONFIRMED', 'ESCALATED'];
@@ -289,14 +426,15 @@ export async function updateDossierStatus(
   dossier.updatedAt = Date.now();
 
   const wrote = await safeSet(dossierKey(id), JSON.stringify(dossier));
-  if (wrote) await safeExpire(dossierKey(id), TTL.DOSSIER_DAYS);
+  if (!wrote) throw new Error('Failed to persist dossier status.');
+  await safeExpire(dossierKey(id), TTL.DOSSIER_DAYS);
 
   if (TERMINAL_STATUSES.includes(status)) {
     await safeZRem(DOSSIERS_ACTIVE_KEY, [id]);
   }
 
   try {
-    await realtime.send(DOSSIER_UPDATES_CHANNEL, { dossierId: id, action: 'updated' });
+    await sendRealtime(DOSSIER_UPDATES_CHANNEL, { dossierId: id, action: 'updated' });
   } catch (error) {
     console.warn('CampaignLens realtime dossier status update failed', { dossierId: id, error });
   }
@@ -324,11 +462,13 @@ export async function redactEvidenceFromDossiers(contentId: string): Promise<voi
       };
 
       const wrote = await safeSet(dossierKey(id), JSON.stringify(updated));
-      if (wrote) await safeExpire(dossierKey(id), TTL.DOSSIER_DAYS);
-      await safeZAdd(DOSSIERS_ACTIVE_KEY, { member: id, score: updated.score.total });
+      if (!wrote) throw new Error('Failed to persist redacted dossier.');
+      await safeExpire(dossierKey(id), TTL.DOSSIER_DAYS);
+      const indexed = await safeZAdd(DOSSIERS_ACTIVE_KEY, { member: id, score: updated.score.total });
+      if (!indexed) throw new Error('Failed to reindex redacted dossier.');
 
       try {
-        await realtime.send(DOSSIER_UPDATES_CHANNEL, { dossierId: id, action: 'updated' });
+        await sendRealtime(DOSSIER_UPDATES_CHANNEL, { dossierId: id, action: 'updated' });
       } catch (error) {
         console.warn('CampaignLens realtime redaction update failed', { dossierId: id, error });
       }

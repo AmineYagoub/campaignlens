@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { connectRealtime, disconnectRealtime } from '@devvit/web/client';
 import type { DossierSummary } from '../../../types/dossier';
+import { DOSSIER_UPDATES_CHANNEL } from '../../../devvit/realtime-channels';
+import { connectClientRealtime, disconnectClientRealtime } from '../devvit/client';
 import { fetchDossiers } from '../lib/api';
-
-const DOSSIER_UPDATES_CHANNEL = 'dossier_updates';
 
 export function useDossiers() {
   const [dossiers, setDossiers] = useState<DossierSummary[]>([]);
@@ -26,7 +25,7 @@ export function useDossiers() {
   useEffect(() => {
     void load();
 
-    void connectRealtime<{ dossierId: string; action: string }>({
+    void connectClientRealtime<{ dossierId: string; action: string }>({
       channel: DOSSIER_UPDATES_CHANNEL,
       onMessage: () => {
         void load();
@@ -34,7 +33,7 @@ export function useDossiers() {
     });
 
     return () => {
-      disconnectRealtime(DOSSIER_UPDATES_CHANNEL);
+      disconnectClientRealtime(DOSSIER_UPDATES_CHANNEL);
     };
   }, [load]);
 

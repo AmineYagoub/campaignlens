@@ -1,8 +1,10 @@
 import type { DossierSummary, DossierStatus } from '../../../types/dossier';
+import { CATEGORY_STYLES, categoryLabel } from './category';
 
 const STATUS_STYLES: Record<DossierStatus, string> = {
   WATCH: 'bg-yellow-100 text-yellow-800',
   NEEDS_REVIEW: 'bg-orange-100 text-orange-800',
+  UNDER_REVIEW: 'bg-blue-100 text-blue-800',
   HIGH_CONFIDENCE: 'bg-red-100 text-red-800',
   IGNORED: 'bg-gray-100 text-gray-600',
   BENIGN: 'bg-green-100 text-green-800',
@@ -26,6 +28,11 @@ function formatTimestamp(ts: number): string {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function signalDescription(summary: DossierSummary): string {
+  const kind = summary.clusterKey.split(':')[0] ?? 'pattern';
+  return `Repeated ${kind} pattern across ${summary.exampleCount} example${summary.exampleCount !== 1 ? 's' : ''}`;
+}
+
 export function DossierCard({
   summary,
   onClick,
@@ -43,11 +50,18 @@ export function DossierCard({
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-2">
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[summary.status]}`}
-        >
-          {summary.status.replace('_', ' ')}
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[summary.status]}`}
+          >
+            {summary.status.replace('_', ' ')}
+          </span>
+          <span
+            className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${CATEGORY_STYLES[summary.category]}`}
+          >
+            {categoryLabel(summary.category)}
+          </span>
+        </div>
         <span className="text-xs text-gray-400">{formatTimestamp(summary.updatedAt)}</span>
       </div>
 
@@ -68,6 +82,7 @@ export function DossierCard({
         <span>{summary.exampleCount} example{summary.exampleCount !== 1 ? 's' : ''}</span>
         <span>{summary.clusterKey.split(':')[0]} signal</span>
       </div>
+      <div className="mt-2 text-xs text-gray-400">{signalDescription(summary)}</div>
     </button>
   );
 }

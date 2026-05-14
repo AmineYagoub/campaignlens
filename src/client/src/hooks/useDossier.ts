@@ -8,7 +8,13 @@ export function useDossier(id: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id) {
+      setDossier(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -25,5 +31,5 @@ export function useDossier(id: string | null) {
     void load();
   }, [load]);
 
-  return { dossier, loading, error, refresh: load, setDossier };
+  return { dossier, loading, error, refresh: load };
 }

@@ -1,11 +1,23 @@
 export type DossierStatus =
   | 'WATCH'
   | 'NEEDS_REVIEW'
+  | 'UNDER_REVIEW'
   | 'HIGH_CONFIDENCE'
   | 'IGNORED'
   | 'BENIGN'
   | 'CONFIRMED'
   | 'ESCALATED';
+
+export const DOSSIER_STATUSES: DossierStatus[] = [
+  'WATCH',
+  'NEEDS_REVIEW',
+  'UNDER_REVIEW',
+  'HIGH_CONFIDENCE',
+  'IGNORED',
+  'BENIGN',
+  'CONFIRMED',
+  'ESCALATED',
+];
 
 export type EvidenceSample = {
   id: string;
@@ -35,7 +47,12 @@ export type DossierTimelineItem = {
   kind: 'mention' | 'report' | 'obfuscation' | 'duplicate';
 };
 
-export type DossierAction =
+export type CampaignCategory =
+  | 'COMMERCIAL_PROMOTION'
+  | 'POSSIBLE_HARMFUL_NARRATIVE'
+  | 'UNKNOWN';
+
+export type DossierFeedback =
   | 'WATCH'
   | 'IGNORE'
   | 'BENIGN'
@@ -80,6 +97,7 @@ export type ReplayGraph = {
 export type EvidenceDossier = {
   id: string;
   clusterKey: string;
+  category: CampaignCategory;
   status: DossierStatus;
   score: CampaignShapeScore;
   signalKey: string;
@@ -94,10 +112,31 @@ export type EvidenceDossier = {
 export type DossierSummary = {
   id: string;
   clusterKey: string;
+  category: CampaignCategory;
   status: DossierStatus;
   totalScore: number;
   signalKey: string;
   exampleCount: number;
   createdAt: number;
   updatedAt: number;
+};
+
+export type ReviewEventType =
+  | 'CLAIM'
+  | 'RELEASE'
+  | 'NOTE'
+  | 'REQUEST_SECOND_REVIEW'
+  | 'PROPOSE_ACTION';
+
+export type ReviewEvent = {
+  id: string;
+  dossierId: string;
+  type: ReviewEventType;
+  createdAt: number;
+  note?: string;
+  proposedAction?: string;
+};
+
+export type ReviewQueueItem = DossierSummary & {
+  latestReviewEvent?: ReviewEvent;
 };
