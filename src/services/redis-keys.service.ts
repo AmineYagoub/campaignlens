@@ -55,9 +55,28 @@ export function dossierKey(id: string): string {
   return `cl:dossier:${id}`;
 }
 
+export function actionDraftKey(id: string): string {
+  return `cl:action:draft:${id}`;
+}
+
+export function actionExecutionKey(id: string): string {
+  return `cl:action:execution:${id}`;
+}
+
+export function actionExecutionByDraftKey(draftId: string): string {
+  return `cl:action:execution:draft:${draftId}`;
+}
+
+export function actionExecutionLockKey(draftId: string): string {
+  return `cl:action:lock:${draftId}`;
+}
+
+export function reviewEventsKey(dossierId: string): string {
+  return `cl:review-events:${dossierId}`;
+}
+
 export const DOSSIERS_ACTIVE_KEY = 'cl:dossiers:active';
+export const ACTION_HISTORY_KEY = 'cl:action:history';
 export const CONFIG_KEY = 'cl:config';
-export const STATS_KEY = 'cl:stats';
 export const PRECISION_KEY = 'cl:precision';
 export const BASELINE_KEY = 'cl:baseline';
-export const DEMO_SEEDED_KEY = 'cl:demo:seeded';
