@@ -23,7 +23,7 @@ export type CampaignLensConfig = {
 };
 
 export const DEFAULT_CONFIG: CampaignLensConfig = {
-  threshold: 45,
+  threshold: 40,
   highConfidenceThreshold: 85,
   requiredSignalFamilies: 3,
   weights: {

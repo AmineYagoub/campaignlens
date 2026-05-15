@@ -54,6 +54,45 @@ describe('calculateCampaignScore', () => {
     expect(result.total).toBeLessThan(20);
   });
 
+  it('keeps two repeated examples below the default threshold', () => {
+    const samples = makeSamples(2, {
+      signalKeys: ['domain:campaign.example', 'brand:campaign'],
+      simhash64: 'a'.repeat(16),
+      shortExcerpt: 'same repeated comparison for campaign.example',
+    });
+    samples[0]!.threadId = 't3_thread1';
+    samples[1]!.threadId = 't3_thread2';
+
+    const result = calculateCampaignScore(
+      samples,
+      { domainMentions: 2, brandMentions: 2, timeSpanMinutes: 5 },
+      0,
+      DEFAULT_CONFIG
+    );
+
+    expect(result.total).toBeLessThan(DEFAULT_CONFIG.threshold);
+  });
+
+  it('surfaces three separate-thread repeated examples for quick review', () => {
+    const samples = makeSamples(3, {
+      signalKeys: ['domain:campaign.example', 'brand:campaign'],
+      simhash64: 'a'.repeat(16),
+      shortExcerpt: 'same repeated comparison for campaign.example',
+    });
+    samples[0]!.threadId = 't3_thread1';
+    samples[1]!.threadId = 't3_thread2';
+    samples[2]!.threadId = 't3_thread3';
+
+    const result = calculateCampaignScore(
+      samples,
+      { domainMentions: 3, brandMentions: 3, timeSpanMinutes: 10 },
+      0,
+      DEFAULT_CONFIG
+    );
+
+    expect(result.total).toBeGreaterThanOrEqual(DEFAULT_CONFIG.threshold);
+  });
+
   it('scores campaign pattern high', () => {
     const samples = makeSamples(10, {
       simhash64: 'a'.repeat(16),

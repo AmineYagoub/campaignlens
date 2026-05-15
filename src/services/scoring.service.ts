@@ -10,13 +10,14 @@ function domainBurstScore(mentions: number): number {
   if (mentions >= 12) return 100;
   if (mentions >= 8) return 75;
   if (mentions >= 5) return 50;
-  if (mentions >= 3) return 25;
+  if (mentions >= 3) return 50;
   return 0;
 }
 
 function brandBurstScore(mentions: number): number {
   if (mentions >= 10) return 100;
   if (mentions >= 5) return 50;
+  if (mentions >= 3) return 35;
   return 0;
 }
 

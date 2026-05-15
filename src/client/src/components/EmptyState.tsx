@@ -13,7 +13,7 @@ export function EmptyState() {
         </svg>
       </div>
       <h3 className="text-sm font-medium text-gray-700 mb-1">No active campaigns detected</h3>
-      <p className="text-xs text-gray-400">CampaignLens will surface coordinated patterns here as they emerge.</p>
+      <p className="text-xs text-gray-400">For a quick test, post the same domain or phrase in 3 separate threads.</p>
     </div>
   );
 }

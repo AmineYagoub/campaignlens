@@ -75,27 +75,27 @@ describe('dossier helper logic', () => {
 });
 
 describe('dossier score threshold', () => {
-  it('a cluster of 3+ samples with domain burst reaches threshold (45)', () => {
+  it('a cluster of 3 separate-thread samples reaches the default threshold', () => {
     const now = Date.now();
-    const samples = Array.from({ length: 5 }, (_, i) =>
+    const samples = Array.from({ length: 3 }, (_, i) =>
       makeSample({
         signalKeys: ['domain:shop.example.com', 'brand:example'],
         threadId: `t3_thread${i}`,
         createdAt: now - i * 5 * 60_000,
+        shortExcerpt: 'same repeated recommendation for shop.example.com',
         simhash64: 'a1b2c3d4e5f6a7b8',
-        flags: i === 0 ? ['HXXP'] : [],
       })
     );
 
     const aggregates = {
-      domainMentions: 5,
-      brandMentions: 5,
-      timeSpanMinutes: 25,
+      domainMentions: 3,
+      brandMentions: 3,
+      timeSpanMinutes: 10,
       localBaselineZScore: 5,
     };
 
     const score = calculateCampaignScore(samples, aggregates, 0, DEFAULT_CONFIG);
-    expect(score.total).toBeGreaterThanOrEqual(45);
+    expect(score.total).toBeGreaterThanOrEqual(DEFAULT_CONFIG.threshold);
   });
 
   it('single normal sample does not reach threshold', () => {
