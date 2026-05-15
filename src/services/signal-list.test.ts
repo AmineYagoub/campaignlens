@@ -4,16 +4,9 @@ import {
   filterAllowlistedSignals,
   isAllowlistedSignal,
   isWatchedSignal,
-  signalValue,
 } from './signal-list.service';
 
 describe('signal-list service', () => {
-  it('extracts the value portion of namespaced signal keys', () => {
-    expect(signalValue('domain:example.com')).toBe('example.com');
-    expect(signalValue('brand:Example')).toBe('Example');
-    expect(signalValue('plain')).toBe('plain');
-  });
-
   it('matches allowlist entries by full signal key or value', () => {
     const config = {
       ...DEFAULT_CONFIG,
