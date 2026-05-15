@@ -18,6 +18,11 @@ describe('extractUrls', () => {
     expect(urls.some((u) => u.includes('example.com'))).toBe(true);
   });
 
+  it('extracts reserved .example playtest domains', () => {
+    const urls = extractUrls('Visit demo-campaign.example today');
+    expect(urls).toContain('demo-campaign.example');
+  });
+
   it('deduplicates URLs by domain', () => {
     const urls = extractUrls('See https://example.com and also example.com again');
     // The full URL should be preferred over bare domain
@@ -76,6 +81,20 @@ describe('extractDomainSignals', () => {
     const signals = extractDomainSignals('Visit example[dot]com');
     expect(signals.length).toBeGreaterThanOrEqual(1);
     expect(signals.some((s) => s.isObfuscated)).toBe(true);
+  });
+
+  it('detects word-dot obfuscated domains as domains', () => {
+    const signals = extractDomainSignals('Visit demo-campaign dot example for the guide');
+    expect(signals).toHaveLength(1);
+    expect(signals[0]!.normalized).toBe('demo-campaign.example');
+    expect(signals[0]!.isObfuscated).toBe(true);
+  });
+
+  it('keeps the specific hyphenated playtest domain over a suffix fragment', () => {
+    const signals = extractDomainSignals(
+      'Read demo-campaign.example and this demo campaign dot example page'
+    );
+    expect(signals.map((signal) => signal.normalized)).toEqual(['demo-campaign.example']);
   });
 
   it('returns normalized domain', () => {
