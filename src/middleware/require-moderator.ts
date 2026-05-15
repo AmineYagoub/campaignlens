@@ -1,25 +1,21 @@
-import { context } from '@devvit/web/server';
-import { reddit } from '@devvit/web/server';
 import type { Context, Next } from 'hono';
+import { requireCurrentModeratorContext } from '../devvit/context';
+import { getModerators } from '../devvit/reddit-client';
 
 /**
  * Middleware: verify the requesting user is a moderator of the current subreddit.
- * Uses reddit.getModerators({ subredditName, username }) which returns a Listing<User>.
+ * Uses the Devvit adapter to read moderator membership for the current subreddit.
  * Non-empty listing = user is a moderator.
  */
 export async function requireModerator(c: Context, next: Next): Promise<Response | void> {
-  const username = context.username;
-  const subredditName = context.subredditName;
+  const moderatorContext = requireCurrentModeratorContext();
 
-  if (!username || !subredditName) {
+  if (!moderatorContext) {
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
   try {
-    const mods = await reddit.getModerators({
-      subredditName,
-      username,
-    });
+    const mods = await getModerators(moderatorContext);
 
     const modList = await mods.all();
     if (modList.length === 0) {
