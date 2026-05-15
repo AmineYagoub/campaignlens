@@ -2,9 +2,10 @@ import type { DomainSignal } from '../types/campaign-event';
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
 
-const BARE_DOMAIN_RE = /(?:^|\s)([\w][\w-]*\.(?:com|net|org|io|co|ai|dev|app|xyz|me|info|biz|cc|tv|us|uk|ca|de|fr|es|it|nl|se|no|dk|fi|pl|br|au|in|jp|kr|cn|ru|mx|za|ng|ke|eg|sa|ae|il|sg|my|ph|th|vn|id|pk|bd|lk|mm|kh|la|np|bt|mv|tl|tr|gr|cz|sk|hu|ro|bg|hr|si|rs|ba|mk|ge|am|az|kz|uz|tm|kg|tj|mn|ps|lb|jo|iq|kw|bh|qa|om|ye|sy|ir|af)(?:\/\S*)?)(?=\s|$|[.!?;:,])/gi;
+const BARE_DOMAIN_RE = /(?:^|\s)([\w][\w-]*\.(?:com|net|org|io|co|ai|dev|app|xyz|me|info|biz|cc|tv|us|uk|ca|de|fr|es|it|nl|se|no|dk|fi|pl|br|au|in|jp|kr|cn|ru|mx|za|ng|ke|eg|sa|ae|il|sg|my|ph|th|vn|id|pk|bd|lk|mm|kh|la|np|bt|mv|tl|tr|gr|cz|sk|hu|ro|bg|hr|si|rs|ba|mk|ge|am|az|kz|uz|tm|kg|tj|mn|ps|lb|jo|iq|kw|bh|qa|om|ye|sy|ir|af|example)(?:\/\S*)?)(?=\s|$|[.!?;:,])/gi;
 
-const OBFUSCATED_DOMAIN_RE = /[\w-]+\s*(?:\[dot\]|\(dot\))\s*[\w-]+(?:\s*(?:\[dot\]|\(dot\))\s*[\w-]+)*/gi;
+const OBFUSCATED_DOMAIN_RE = /[\w-]+(?:\s*(?:\[dot\]|\(dot\)|\bdot\b)\s*[\w-]+)+/gi;
+const OBFUSCATED_DOMAIN_TEST_RE = /[\w-]+(?:\s*(?:\[dot\]|\(dot\)|\bdot\b)\s*[\w-]+)+/i;
 
 const PUBLIC_SUFFIXES = new Set([
   'co.uk', 'com.au', 'com.br', 'com.ca', 'com.cn', 'com.fr', 'com.de',
@@ -110,7 +111,7 @@ export function extractDomainSignals(input: string): DomainSignal[] {
       normalized: domain,
       hasAffiliateParams: AFFILIATE_PARAM_RE.test(url),
       isShortener: SHORTENER_DOMAINS.has(normalized),
-      isObfuscated: OBFUSCATED_DOMAIN_RE.test(url),
+      isObfuscated: OBFUSCATED_DOMAIN_TEST_RE.test(url),
     });
   }
 
@@ -140,5 +141,33 @@ export function extractDomainSignals(input: string): DomainSignal[] {
     }
   }
 
-  return domains;
+  return preferSpecificDomainSignals(domains);
+}
+
+function preferSpecificDomainSignals(signals: DomainSignal[]): DomainSignal[] {
+  const byDomain = new Map<string, DomainSignal>();
+  for (const signal of signals) {
+    const existing = byDomain.get(signal.normalized);
+    if (!existing) {
+      byDomain.set(signal.normalized, signal);
+      continue;
+    }
+
+    byDomain.set(signal.normalized, {
+      raw: existing.raw,
+      normalized: existing.normalized,
+      hasAffiliateParams: existing.hasAffiliateParams || signal.hasAffiliateParams,
+      isShortener: existing.isShortener || signal.isShortener,
+      isObfuscated: existing.isObfuscated || signal.isObfuscated,
+    });
+  }
+
+  const unique = [...byDomain.values()];
+  return unique.filter((candidate) => {
+    return !unique.some((other) => {
+      if (candidate.normalized === other.normalized) return false;
+      return other.normalized.endsWith(candidate.normalized)
+        && other.normalized.at(-(candidate.normalized.length + 1)) === '-';
+    });
+  });
 }
