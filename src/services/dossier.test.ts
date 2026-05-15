@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { EvidenceSample, CampaignShapeScore } from '../types/dossier';
 import { DEFAULT_CONFIG } from '../types/config';
 import { calculateCampaignScore, generateExplanationBullets } from './scoring.service';
+import { categorizeCampaign, clusterKeysForEvidence } from './dossier.service';
 
 // We test the dossier service indirectly through scoring integration
 // and the helper logic. Redis-dependent functions are tested via
@@ -24,77 +25,53 @@ function makeSample(overrides: Partial<EvidenceSample> = {}): EvidenceSample {
 }
 
 describe('dossier helper logic', () => {
-  it('computes sketch aggregates for samples with domain signals', () => {
-    const samples = [
-      makeSample({ signalKeys: ['domain:shop.com', 'brand:shop'] }),
-      makeSample({ signalKeys: ['domain:shop.com'] }),
-      makeSample({ signalKeys: ['domain:shop.com', 'domain:other.com'] }),
-    ];
+  it('clusters domain-backed evidence by domain instead of duplicate brand keys', () => {
+    const sample = makeSample({
+      signalKeys: [
+        'domain:demo-campaign.example',
+        'brand:demo-campaign.example',
+        'brand:demo-campaign',
+        'brand:campaign',
+      ],
+    });
 
-    const domainMentions = samples.reduce(
-      (acc, s) => acc + s.signalKeys.filter((k) => k.startsWith('domain:')).length,
-      0
-    );
-    const brandMentions = samples.reduce(
-      (acc, s) => acc + s.signalKeys.filter((k) => k.startsWith('brand:')).length,
-      0
-    );
-
-    expect(domainMentions).toBe(4);
-    expect(brandMentions).toBe(1);
+    expect(clusterKeysForEvidence(sample)).toEqual(['domain:demo-campaign.example']);
   });
 
-  it('computes time span from sample timestamps', () => {
-    const now = Date.now();
-    const samples = [
-      makeSample({ createdAt: now - 30 * 60_000 }),
-      makeSample({ createdAt: now }),
-    ];
+  it('keeps brand clustering for brand-only evidence', () => {
+    const sample = makeSample({
+      signalKeys: ['brand:flatworm', 'brand:flatworm'],
+    });
 
-    const timestamps = samples.map((s) => s.createdAt);
-    const spanMinutes = (Math.max(...timestamps) - Math.min(...timestamps)) / 60_000;
-
-    expect(spanMinutes).toBe(30);
+    expect(clusterKeysForEvidence(sample)).toEqual(['brand:flatworm']);
   });
 
-  it('time span is 0 for single sample', () => {
-    const samples = [makeSample()];
-    const timestamps = samples.map((s) => s.createdAt);
-    const spanMinutes =
-      timestamps.length >= 2
-        ? (Math.max(...timestamps) - Math.min(...timestamps)) / 60_000
-        : 0;
+  it('drops a suffix domain fragment when a more specific hyphenated domain exists', () => {
+    const sample = makeSample({
+      signalKeys: ['domain:campaign.example', 'domain:demo-campaign.example'],
+    });
 
-    expect(spanMinutes).toBe(0);
+    expect(clusterKeysForEvidence(sample)).toEqual(['domain:demo-campaign.example']);
   });
 
-  it('generates timeline items from samples with flags', () => {
-    const samples = [
-      makeSample({ flags: ['HXXP'], createdAt: 1000 }),
-      makeSample({ flags: [], createdAt: 2000 }),
-    ];
-
-    const items: Array<{ timestamp: number; label: string; kind: string }> = [];
-    for (const s of samples) {
-      items.push({ timestamp: s.createdAt, label: `${s.kind} detected`, kind: 'mention' });
-      for (const flag of s.flags) {
-        items.push({ timestamp: s.createdAt, label: flag, kind: 'obfuscation' });
-      }
-    }
-
-    expect(items).toHaveLength(3);
-    expect(items[0]!.kind).toBe('mention');
-    expect(items[1]!.kind).toBe('obfuscation');
-    expect(items[1]!.label).toBe('HXXP');
+  it('categorizes domain campaigns as commercial promotion by default', () => {
+    expect(categorizeCampaign('domain:example.com', [makeSample()], DEFAULT_CONFIG)).toBe('COMMERCIAL_PROMOTION');
   });
 
-  it('truncates examples to max count', () => {
-    const max = 3;
-    const samples = Array.from({ length: 10 }, (_, i) => makeSample({ id: `ev-${i}` }));
-    const examples = samples.slice(0, max);
+  it('categorizes configured harmful narrative terms without semantic overclaiming', () => {
+    const sample = makeSample({
+      shortExcerpt: 'Repeated coded slogan from the harm watchlist',
+      matchedFragments: ['coded slogan'],
+    });
 
-    expect(examples).toHaveLength(3);
+    expect(
+      categorizeCampaign('brand:coded-slogan', [sample], {
+        ...DEFAULT_CONFIG,
+        harmfulNarrativeWatchlist: ['coded slogan'],
+      })
+    ).toBe('POSSIBLE_HARMFUL_NARRATIVE');
   });
+
 });
 
 describe('dossier score threshold', () => {
@@ -234,40 +211,5 @@ describe('explanation bullets for dossier', () => {
     // Should only have the total score line
     expect(bullets).toHaveLength(1);
     expect(bullets[0]).toContain('10 total score');
-  });
-});
-
-describe('dossier status transitions', () => {
-  const terminalStatuses = ['IGNORED', 'BENIGN', 'CONFIRMED', 'ESCALATED'] as const;
-  const nonTerminalStatuses = ['WATCH', 'NEEDS_REVIEW', 'HIGH_CONFIDENCE'] as const;
-
-  it('identifies terminal statuses correctly', () => {
-    for (const status of terminalStatuses) {
-      expect(terminalStatuses.includes(status)).toBe(true);
-    }
-  });
-
-  it('non-terminal statuses are not in terminal list', () => {
-    for (const status of nonTerminalStatuses) {
-      expect(terminalStatuses.includes(status as never)).toBe(false);
-    }
-  });
-
-  it('maps dossier actions to correct statuses', () => {
-    const statusMap: Record<string, string> = {
-      WATCH: 'WATCH',
-      IGNORE: 'IGNORED',
-      BENIGN: 'BENIGN',
-      CONFIRMED_CAMPAIGN: 'CONFIRMED',
-      FALSE_POSITIVE: 'IGNORED',
-      ESCALATE: 'ESCALATED',
-    };
-
-    expect(statusMap['WATCH']).toBe('WATCH');
-    expect(statusMap['IGNORE']).toBe('IGNORED');
-    expect(statusMap['BENIGN']).toBe('BENIGN');
-    expect(statusMap['CONFIRMED_CAMPAIGN']).toBe('CONFIRMED');
-    expect(statusMap['FALSE_POSITIVE']).toBe('IGNORED');
-    expect(statusMap['ESCALATE']).toBe('ESCALATED');
   });
 });

@@ -1,7 +1,7 @@
 import { BASELINE_KEY } from './redis-keys.service';
 import { TTL } from './ttl.service';
 import type { BaselineMode } from '../types/config';
-import { safeHGet, safeHGetAll, safeHSet, safeExpire } from './redis-safe.service';
+import { safeHGet, safeHGetAll, safeHSet, safeExpire } from '../devvit/redis-client';
 
 interface BaselineBucket {
   count: number;
@@ -44,24 +44,6 @@ export async function getBaselineZScore(hourBucket: string, observedCount: numbe
 
   if (stddev === 0) return observedCount > mean ? 10 : 0;
   return (observedCount - mean) / stddev;
-}
-
-export async function computeRollingBaseline(signalKey: string, _windowHours: number): Promise<{ mean: number; stddev: number }> {
-  // For signal-specific baselines, use a separate hash
-  const key = `${BASELINE_KEY}:sig:${signalKey}`;
-  const all = await safeHGetAll(key);
-  const counts: number[] = [];
-
-  for (const [, value] of Object.entries(all)) {
-    const bucket = parseBaselineBucket(value);
-    counts.push(bucket.count);
-  }
-
-  if (counts.length === 0) return { mean: 0, stddev: 0 };
-
-  const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
-  const variance = counts.reduce((a, b) => a + (b - mean) ** 2, 0) / counts.length;
-  return { mean, stddev: Math.sqrt(variance) };
 }
 
 export async function getBaselineMode(): Promise<BaselineMode> {

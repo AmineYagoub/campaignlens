@@ -1,5 +1,5 @@
 import type { CampaignShapeScore, EvidenceSample } from '../types/dossier';
-import type { CampaignLensConfig } from '../types/config';
+import type { BaselineMode, CampaignLensConfig } from '../types/config';
 import { hammingDistance64 } from './simhash.service';
 
 function clamp(value: number, min = 0, max = 100): number {
@@ -165,7 +165,7 @@ export function calculateCampaignScore(
 export function isHighConfidence(
   score: CampaignShapeScore,
   config: CampaignLensConfig,
-  baselineMode: string,
+  baselineMode: BaselineMode,
   isAllowlisted: boolean,
   recentlyMarkedBenign: boolean
 ): boolean {

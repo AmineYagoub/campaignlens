@@ -12,7 +12,7 @@ type TriggerBudgetContext = {
   redisCommands: RedisOperationRecord[];
 };
 
-export type TriggerBudgetSummary = {
+type TriggerBudgetSummary = {
   label: string;
   durationMs: number;
   redisCommandCount: number;
@@ -53,7 +53,7 @@ export function recordRedisCommand(operation: string, key: string, ok: boolean):
   context.redisCommands.push({ operation, key, ok });
 }
 
-export function getTriggerBudgetSummary(): TriggerBudgetSummary | null {
+function getTriggerBudgetSummary(): TriggerBudgetSummary | null {
   const context = store.getStore();
   if (!context) return null;
 
@@ -85,5 +85,3 @@ function logBudgetSummary(summary: TriggerBudgetSummary | null): void {
 
   console[level]('CampaignLens trigger budget summary', summary);
 }
-
-export { DEFAULT_COMMAND_BUDGET, DEFAULT_TIME_BUDGET_MS };

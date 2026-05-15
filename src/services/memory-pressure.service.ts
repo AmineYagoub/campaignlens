@@ -35,10 +35,6 @@ const PRESSURE_CAPS: MemoryCaps = {
 
 let pressureState = false;
 
-export function setMemoryPressure(pressure: boolean): void {
-  pressureState = pressure;
-}
-
 export function isUnderMemoryPressure(): boolean {
   return pressureState;
 }
@@ -72,7 +68,3 @@ function buildPressureCaps(config: CampaignLensConfig): MemoryCaps {
     dossierTTLDays: PRESSURE_CAPS.dossierTTLDays,
   };
 }
-
-const NORMAL_CAPS = buildNormalCaps(DEFAULT_CONFIG);
-
-export { NORMAL_CAPS, PRESSURE_CAPS, estimateMemoryMB, MEMORY_LIMIT_MB };

@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getTriggerBudgetSummary,
-  recordRedisCommand,
-  runWithTriggerBudget,
-} from './trigger-budget.service';
+import { recordRedisCommand, runWithTriggerBudget } from './trigger-budget.service';
 
 describe('trigger-budget service', () => {
-  it('collects redis command counts inside a trigger context', async () => {
-    let summary = null;
+  it('logs redis command counts inside a trigger context', async () => {
+    let summary: unknown;
+    const originalLog = console.log;
+    console.log = (_message?: unknown, value?: unknown) => {
+      summary = value;
+    };
 
-    await runWithTriggerBudget('test-trigger', async () => {
-      recordRedisCommand('get', 'cl:test:1', true);
-      recordRedisCommand('set', 'cl:test:2', false);
-      summary = getTriggerBudgetSummary();
-    });
+    try {
+      await runWithTriggerBudget('test-trigger', async () => {
+        recordRedisCommand('get', 'cl:test:1', true);
+        recordRedisCommand('set', 'cl:test:2', true);
+      });
+    } finally {
+      console.log = originalLog;
+    }
 
     expect(summary).toMatchObject({
       label: 'test-trigger',
       redisCommandCount: 2,
-      redisFailureCount: 1,
+      redisFailureCount: 0,
       overCommandBudget: false,
       overTimeBudget: false,
       operations: {
@@ -28,7 +31,28 @@ describe('trigger-budget service', () => {
     });
   });
 
-  it('does not expose a budget context outside a trigger run', () => {
-    expect(getTriggerBudgetSummary()).toBeNull();
+  it('logs failed commands at warning level', async () => {
+    let summary: unknown;
+    const originalWarn = console.warn;
+    console.warn = (_message?: unknown, value?: unknown) => {
+      summary = value;
+    };
+
+    try {
+      await runWithTriggerBudget('test-trigger', async () => {
+        recordRedisCommand('set', 'cl:test:2', false);
+      });
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(summary).toMatchObject({
+      label: 'test-trigger',
+      redisCommandCount: 1,
+      redisFailureCount: 1,
+      operations: {
+        set: 1,
+      },
+    });
   });
 });

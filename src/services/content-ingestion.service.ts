@@ -20,6 +20,7 @@ import {
 } from './redis-keys.service';
 import { TTL } from './ttl.service';
 import { processEventForClusters, redactEvidenceFromDossiers } from './dossier.service';
+import { isCampaignLensDashboardPost } from './internal-content.service';
 import {
   safeDel,
   safeExpire,
@@ -30,7 +31,7 @@ import {
   safeZCard,
   safeZRem,
   safeZRemRangeByRank,
-} from './redis-safe.service';
+} from '../devvit/redis-client';
 
 export async function ingestPost(trigger: {
   post?: { id?: string; title?: string; selftext?: string; subredditId?: string };
@@ -40,7 +41,12 @@ export async function ingestPost(trigger: {
   if (await isProcessed(trigger.post.id)) return;
 
   const text = `${trigger.post.title ?? ''} ${trigger.post.selftext ?? ''}`;
-  const signals = extractSignals(text, text);
+  if (isCampaignLensDashboardPost(trigger.post.title ?? '', trigger.post.selftext ?? '')) {
+    await markProcessed(trigger.post.id);
+    return;
+  }
+
+  const signals = extractSignals(text);
   const config = await getConfig();
   const hash = simhash64(text);
   const prefixes = simhashPrefixes(hash);
@@ -107,10 +113,11 @@ export async function ingestPost(trigger: {
     if (stored) {
       await processEventForClusters(evidence);
     } else {
-      console.warn('CampaignLens event dropped before dossier processing: evidence storage failed', {
+      console.warn('CampaignLens evidence storage failed; leaving content unprocessed for retry', {
         contentId: evidence.contentId,
         evidenceId: evidence.id,
       });
+      return;
     }
   }
 
@@ -125,7 +132,7 @@ export async function ingestComment(trigger: {
   if (await isProcessed(trigger.comment.id)) return;
 
   const text = trigger.comment.body ?? '';
-  const signals = extractSignals(text, text);
+  const signals = extractSignals(text);
   const config = await getConfig();
   const hash = simhash64(text);
   const prefixes = simhashPrefixes(hash);
@@ -192,19 +199,21 @@ export async function ingestComment(trigger: {
     if (stored) {
       await processEventForClusters(evidence);
     } else {
-      console.warn('CampaignLens event dropped before dossier processing: evidence storage failed', {
+      console.warn('CampaignLens evidence storage failed; leaving content unprocessed for retry', {
         contentId: evidence.contentId,
         evidenceId: evidence.id,
       });
+      return;
     }
   }
 
   await markProcessed(trigger.comment.id);
 }
 
-export async function ingestReport(_kind: 'post' | 'comment', targetId: string, reason: string): Promise<void> {
+export async function ingestReport(kind: 'post' | 'comment', targetId: string, reason: string): Promise<void> {
   const evidence = await getEvidenceForContent(targetId);
   if (!evidence) return;
+  if (evidence.kind !== kind) return;
 
   const bucket = hourBucket(Date.now());
 
@@ -288,12 +297,14 @@ async function storeEvidenceSample(
   await safeExpire(evidenceContentKey(evidence.contentId), ttlSeconds);
 
   const indexKeys: string[] = [];
+  let indexedCount = 0;
 
   for (const signalKey of evidence.signalKeys) {
     const indexKey = evidenceSignalIndexKey(signalKey, hourBucket(evidence.createdAt));
     indexKeys.push(indexKey);
     const indexed = await safeZAdd(indexKey, { member: evidence.id, score: evidence.createdAt });
     if (!indexed) continue;
+    indexedCount++;
     await safeExpire(indexKey, ttlSeconds);
 
     const card = await safeZCard(indexKey);
@@ -308,7 +319,7 @@ async function storeEvidenceSample(
   );
   if (wroteSignalIndex) await safeExpire(evidenceContentSignalIndexKey(evidence.contentId), ttlSeconds);
 
-  return true;
+  return indexedCount > 0 && wroteSignalIndex;
 }
 
 function normalizeReportReason(reason: string): string {

@@ -1,205 +1,153 @@
-import { describe, it, expect } from 'vitest';
-import { DEFAULT_CONFIG } from '../types/config';
-import type { ModFeedback } from '../types/feedback';
-import type { DossierAction, DossierStatus } from '../types/dossier';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_CONFIG, type CampaignLensConfig } from '../types/config';
+import type { EvidenceDossier } from '../types/dossier';
+import type { PrecisionStats } from '../types/feedback';
 
-describe('feedback weight adjustment logic', () => {
-  function decreaseStrongestWeight(
-    w: Record<string, number>,
-    amount: number
-  ): void {
-    const entries = Object.entries(w);
-    const maxEntry = entries.reduce((a, b) => (a[1] > b[1] ? a : b));
-    w[maxEntry[0]] = Math.max(0.05, maxEntry[1] - amount);
-  }
-
-  it('BENIGN decreases strongest weight by 0.02', () => {
-    const weights = { ...DEFAULT_CONFIG.weights };
-    const strongest = Object.entries(weights).reduce((a, b) => (a[1] > b[1] ? a : b));
-    const before = strongest[1];
-
-    decreaseStrongestWeight(weights, 0.02);
-
-    expect(weights[strongest[0] as keyof typeof weights]).toBe(before - 0.02);
-  });
-
-  it('FALSE_POSITIVE decreases strongest weight by 0.03', () => {
-    const weights = { ...DEFAULT_CONFIG.weights };
-    const strongest = Object.entries(weights).reduce((a, b) => (a[1] > b[1] ? a : b));
-    const before = strongest[1];
-
-    decreaseStrongestWeight(weights, 0.03);
-
-    expect(weights[strongest[0] as keyof typeof weights]).toBe(before - 0.03);
-  });
-
-  it('weight never goes below 0.05', () => {
-    const weights = { domainBurst: 0.06, brandBurst: 0.05, threadSpread: 0.05, simhash: 0.05, participationPattern: 0.05, obfuscation: 0.05, report: 0.05 };
-
-    // Decrease many times
-    for (let i = 0; i < 10; i++) {
-      decreaseStrongestWeight(weights, 0.02);
-    }
-
-    const allValues = Object.values(weights);
-    for (const v of allValues) {
-      expect(v).toBeGreaterThanOrEqual(0.05);
-    }
-  });
-
-  it('CONFIRMED_CAMPAIGN increases domain weight by 0.02 for domain signal', () => {
-    const weights = { ...DEFAULT_CONFIG.weights };
-    const before = weights.domainBurst;
-
-    // Simulate confirmed campaign for domain signal
-    weights.domainBurst = Math.min(0.4, weights.domainBurst + 0.02);
-
-    expect(weights.domainBurst).toBe(before + 0.02);
-  });
-
-  it('CONFIRMED_CAMPAIGN increases brand weight by 0.02 for brand signal', () => {
-    const weights = { ...DEFAULT_CONFIG.weights };
-    const before = weights.brandBurst;
-
-    weights.brandBurst = Math.min(0.4, weights.brandBurst + 0.02);
-
-    expect(weights.brandBurst).toBe(before + 0.02);
-  });
-
-  it('weight never exceeds 0.4', () => {
-    const weights = { ...DEFAULT_CONFIG.weights };
-    weights.domainBurst = 0.39;
-
-    weights.domainBurst = Math.min(0.4, weights.domainBurst + 0.02);
-
-    expect(weights.domainBurst).toBe(0.4);
-  });
+let config: CampaignLensConfig;
+const redisStore = new Map<string, string>();
+const getConfig = vi.fn(async () => config);
+const saveConfig = vi.fn(async (next: CampaignLensConfig) => {
+  config = next;
+  return next;
 });
+const getDossier = vi.fn();
+const updateDossierStatus = vi.fn(async () => undefined);
+const getEvidenceForContent = vi.fn();
+const safeGet = vi.fn(async (key: string) => redisStore.get(key));
+const safeSet = vi.fn(async (key: string, value: string) => {
+  redisStore.set(key, value);
+  return true;
+});
+const safeExpire = vi.fn(async () => true);
+const safeZAdd = vi.fn(async () => true);
 
-describe('feedback to status mapping', () => {
-  const statusMap: Record<DossierAction, DossierStatus> = {
-    WATCH: 'WATCH',
-    IGNORE: 'IGNORED',
-    BENIGN: 'BENIGN',
-    CONFIRMED_CAMPAIGN: 'CONFIRMED',
-    FALSE_POSITIVE: 'IGNORED',
-    ESCALATE: 'ESCALATED',
+vi.mock('./config.service', () => ({
+  getConfig,
+  saveConfig,
+}));
+
+vi.mock('./dossier.service', () => ({
+  getDossier,
+  updateDossierStatus,
+}));
+
+vi.mock('./content-ingestion.service', () => ({
+  getEvidenceForContent,
+}));
+
+vi.mock('../devvit/redis-client', () => ({
+  safeGet,
+  safeSet,
+  safeExpire,
+  safeZAdd,
+}));
+
+const {
+  handleFeedback,
+  handleModAction,
+} = await import('./feedback.service');
+
+function makeDossier(overrides: Partial<EvidenceDossier> = {}): EvidenceDossier {
+  return {
+    id: 'dossier-1',
+    clusterKey: 'domain:example.com',
+    category: 'COMMERCIAL_PROMOTION',
+    status: 'NEEDS_REVIEW',
+    score: {
+      total: 88,
+      domainBurst: 75,
+      brandBurst: 100,
+      threadSpread: 100,
+      simhash: 0,
+      participationPattern: 90,
+      obfuscation: 100,
+      report: 0,
+      independentSignalFamilies: 5,
+      localBaselineZScore: 0,
+    },
+    signalKey: 'domain:example.com',
+    examples: [],
+    timeline: [],
+    explanationBullets: [],
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides,
   };
+}
 
-  it('maps WATCH to WATCH', () => {
-    expect(statusMap['WATCH']).toBe('WATCH');
+describe('feedback service', () => {
+  beforeEach(() => {
+    config = structuredClone(DEFAULT_CONFIG);
+    redisStore.clear();
+    vi.clearAllMocks();
   });
 
-  it('maps IGNORE to IGNORED', () => {
-    expect(statusMap['IGNORE']).toBe('IGNORED');
+  it('decreases the strongest weight for benign feedback', async () => {
+    getDossier.mockResolvedValue(makeDossier({ signalKey: 'brand:example' }));
+    const before = config.weights.domainBurst;
+
+    await handleFeedback('dossier-1', 'BENIGN');
+
+    expect(config.weights.domainBurst).toBeCloseTo(before - 0.02);
+    expect(saveConfig).toHaveBeenCalledTimes(1);
+    expect(updateDossierStatus).toHaveBeenCalledWith('dossier-1', 'BENIGN');
   });
 
-  it('maps BENIGN to BENIGN', () => {
-    expect(statusMap['BENIGN']).toBe('BENIGN');
+  it('caps confirmed campaign increases by signal family', async () => {
+    config.weights.domainBurst = 0.39;
+    config.weights.brandBurst = 0.39;
+    getEvidenceForContent.mockResolvedValue({
+      signalKeys: ['domain:example.com', 'brand:example'],
+    });
+
+    await handleModAction({ action: 'remove', targetId: 't3_post' });
+
+    expect(config.weights.domainBurst).toBe(0.4);
+    expect(config.weights.brandBurst).toBe(0.4);
+    expect(saveConfig).toHaveBeenCalledTimes(1);
   });
 
-  it('maps CONFIRMED_CAMPAIGN to CONFIRMED', () => {
-    expect(statusMap['CONFIRMED_CAMPAIGN']).toBe('CONFIRMED');
-  });
+  it('records feedback, updates precision stats, adjusts weights, and updates dossier status', async () => {
+    getDossier.mockResolvedValue(makeDossier());
 
-  it('maps FALSE_POSITIVE to IGNORED', () => {
-    expect(statusMap['FALSE_POSITIVE']).toBe('IGNORED');
-  });
+    await handleFeedback('dossier-1', 'CONFIRMED_CAMPAIGN');
 
-  it('maps ESCALATE to ESCALATED', () => {
-    expect(statusMap['ESCALATE']).toBe('ESCALATED');
-  });
-});
-
-describe('mod action mapping', () => {
-  it('maps remove action to CONFIRMED_CAMPAIGN feedback', () => {
-    const action: string = 'remove';
-    const expectedFeedback: ModFeedback = 'CONFIRMED_CAMPAIGN';
-    expect(action === 'remove' || action === 'spam').toBe(true);
-    expect(expectedFeedback).toBe('CONFIRMED_CAMPAIGN');
-  });
-
-  it('maps spam action to CONFIRMED_CAMPAIGN feedback', () => {
-    const action: string = 'spam';
-    expect(action === 'remove' || action === 'spam').toBe(true);
-  });
-
-  it('maps approve action to BENIGN feedback', () => {
-    const action: string = 'approve';
-    expect(action).toBe('approve');
-  });
-
-  it('ignores unknown actions', () => {
-    const action: string = 'lock';
-    const isRelevant = action === 'remove' || action === 'spam' || action === 'approve';
-    expect(isRelevant).toBe(false);
-  });
-});
-
-describe('precision stats', () => {
-  function applyFeedbackToStats(
-    stats: { reviewedHighConfidence: number; markedFalsePositive: number; markedBenign: number; confirmedCampaign: number },
-    feedback: ModFeedback
-  ) {
-    switch (feedback) {
-      case 'CONFIRMED_CAMPAIGN':
-        stats.confirmedCampaign++;
-        stats.reviewedHighConfidence++;
-        break;
-      case 'FALSE_POSITIVE':
-        stats.markedFalsePositive++;
-        stats.reviewedHighConfidence++;
-        break;
-      case 'BENIGN':
-        stats.markedBenign++;
-        stats.reviewedHighConfidence++;
-        break;
-    }
-    return stats;
-  }
-
-  it('increments confirmedCampaign on CONFIRMED_CAMPAIGN', () => {
-    const stats = { reviewedHighConfidence: 0, markedFalsePositive: 0, markedBenign: 0, confirmedCampaign: 0 };
-    applyFeedbackToStats(stats, 'CONFIRMED_CAMPAIGN');
+    const stats = JSON.parse(redisStore.get('cl:precision') ?? '{}') as PrecisionStats;
     expect(stats.confirmedCampaign).toBe(1);
     expect(stats.reviewedHighConfidence).toBe(1);
+    expect(config.weights.domainBurst).toBeCloseTo(DEFAULT_CONFIG.weights.domainBurst + 0.02);
+    expect(updateDossierStatus).toHaveBeenCalledWith('dossier-1', 'CONFIRMED');
   });
 
-  it('increments markedFalsePositive on FALSE_POSITIVE', () => {
-    const stats = { reviewedHighConfidence: 0, markedFalsePositive: 0, markedBenign: 0, confirmedCampaign: 0 };
-    applyFeedbackToStats(stats, 'FALSE_POSITIVE');
-    expect(stats.markedFalsePositive).toBe(1);
-    expect(stats.reviewedHighConfidence).toBe(1);
+  it('maps non-weight feedback to the expected review statuses', async () => {
+    getDossier.mockResolvedValue(makeDossier());
+
+    await handleFeedback('dossier-1', 'WATCH');
+    await handleFeedback('dossier-1', 'IGNORE');
+    await handleFeedback('dossier-1', 'FALSE_POSITIVE');
+    await handleFeedback('dossier-1', 'ESCALATE');
+
+    expect(updateDossierStatus).toHaveBeenCalledWith('dossier-1', 'WATCH');
+    expect(updateDossierStatus).toHaveBeenCalledWith('dossier-1', 'IGNORED');
+    expect(updateDossierStatus).toHaveBeenCalledWith('dossier-1', 'ESCALATED');
   });
 
-  it('increments markedBenign on BENIGN', () => {
-    const stats = { reviewedHighConfidence: 0, markedFalsePositive: 0, markedBenign: 0, confirmedCampaign: 0 };
-    applyFeedbackToStats(stats, 'BENIGN');
-    expect(stats.markedBenign).toBe(1);
-    expect(stats.reviewedHighConfidence).toBe(1);
+  it('batches mod action weight changes into a single config write', async () => {
+    getEvidenceForContent.mockResolvedValue({
+      signalKeys: ['domain:example.com', 'brand:example'],
+    });
+
+    await handleModAction({ action: 'remove', targetId: 't3_post' });
+
+    expect(config.weights.domainBurst).toBeCloseTo(DEFAULT_CONFIG.weights.domainBurst + 0.02);
+    expect(config.weights.brandBurst).toBeCloseTo(DEFAULT_CONFIG.weights.brandBurst + 0.02);
+    expect(saveConfig).toHaveBeenCalledTimes(1);
   });
 
-  it('does not change stats for IGNORE', () => {
-    const stats = { reviewedHighConfidence: 5, markedFalsePositive: 2, markedBenign: 1, confirmedCampaign: 2 };
-    applyFeedbackToStats(stats, 'IGNORE');
-    expect(stats.reviewedHighConfidence).toBe(5);
-  });
+  it('ignores unrelated mod actions', async () => {
+    await handleModAction({ action: 'lock', targetId: 't3_post' });
 
-  it('does not change stats for WATCH', () => {
-    const stats = { reviewedHighConfidence: 5, markedFalsePositive: 2, markedBenign: 1, confirmedCampaign: 2 };
-    applyFeedbackToStats(stats, 'WATCH');
-    expect(stats.reviewedHighConfidence).toBe(5);
-  });
-
-  it('accumulates multiple feedbacks', () => {
-    const stats = { reviewedHighConfidence: 0, markedFalsePositive: 0, markedBenign: 0, confirmedCampaign: 0 };
-    applyFeedbackToStats(stats, 'CONFIRMED_CAMPAIGN');
-    applyFeedbackToStats(stats, 'BENIGN');
-    applyFeedbackToStats(stats, 'FALSE_POSITIVE');
-    applyFeedbackToStats(stats, 'CONFIRMED_CAMPAIGN');
-    expect(stats.reviewedHighConfidence).toBe(4);
-    expect(stats.confirmedCampaign).toBe(2);
-    expect(stats.markedBenign).toBe(1);
-    expect(stats.markedFalsePositive).toBe(1);
+    expect(getEvidenceForContent).not.toHaveBeenCalled();
+    expect(saveConfig).not.toHaveBeenCalled();
   });
 });

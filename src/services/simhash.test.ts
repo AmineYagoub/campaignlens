@@ -1,36 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createShingles,
-  simhash64,
-  hammingDistance64,
-  simhashSimilarity,
-  simhashPrefixes,
-} from './simhash.service';
-
-describe('createShingles', () => {
-  it('creates overlapping n-grams', () => {
-    const shingles = createShingles(['a', 'b', 'c', 'd'], 3);
-    expect(shingles).toEqual([
-      ['a', 'b', 'c'],
-      ['b', 'c', 'd'],
-    ]);
-  });
-
-  it('returns single shingle when tokens < size', () => {
-    const shingles = createShingles(['a', 'b'], 3);
-    expect(shingles).toEqual([['a', 'b']]);
-  });
-
-  it('handles exact size match', () => {
-    const shingles = createShingles(['a', 'b', 'c'], 3);
-    expect(shingles).toEqual([['a', 'b', 'c']]);
-  });
-
-  it('handles single token', () => {
-    const shingles = createShingles(['a'], 3);
-    expect(shingles).toEqual([['a']]);
-  });
-});
+import { simhash64, hammingDistance64, simhashPrefixes } from './simhash.service';
 
 describe('simhash64', () => {
   it('is deterministic', () => {
@@ -94,27 +63,6 @@ describe('hammingDistance64', () => {
     const a = 0n;
     const b = (1n << 64n) - 1n;
     expect(hammingDistance64(a, b)).toBe(64);
-  });
-});
-
-describe('simhashSimilarity', () => {
-  it('returns 100 for identical hashes', () => {
-    const h = simhash64('test input');
-    expect(simhashSimilarity(h, h)).toBe(100);
-  });
-
-  it('returns lower similarity for different hashes', () => {
-    const a = simhash64('completely different text one');
-    const b = simhash64('completely different text two');
-    expect(simhashSimilarity(a, b)).toBeLessThan(100);
-  });
-
-  it('returns a percentage between 0 and 100', () => {
-    const a = simhash64('alpha');
-    const b = simhash64('beta');
-    const sim = simhashSimilarity(a, b);
-    expect(sim).toBeGreaterThanOrEqual(0);
-    expect(sim).toBeLessThanOrEqual(100);
   });
 });
 

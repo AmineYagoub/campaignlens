@@ -1,7 +1,7 @@
 import { fnv1a64 } from '../utils/hashing';
 import { normalizeForSimilarity } from '../utils/text-normalization';
 
-export function createShingles(tokens: string[], size: number): string[][] {
+function createShingles(tokens: string[], size: number): string[][] {
   if (tokens.length < size) return [tokens];
   const shingles: string[][] = [];
   for (let i = 0; i <= tokens.length - size; i++) {
@@ -56,11 +56,6 @@ export function hammingDistance64(a: bigint, b: bigint): number {
     xor >>= 1n;
   }
   return count;
-}
-
-export function simhashSimilarity(a: bigint, b: bigint): number {
-  const distance = hammingDistance64(a, b);
-  return ((64 - distance) / 64) * 100;
 }
 
 export function simhashPrefixes(hash: bigint): string[] {
