@@ -15,6 +15,7 @@ export type CampaignLensConfig = {
   };
   allowlist: string[];
   blocklist: string[];
+  harmfulNarrativeWatchlist: string[];
   windowMinutes: number;
   evidenceCap: number;
   evidenceCapPerSignal: number;
@@ -36,6 +37,7 @@ export const DEFAULT_CONFIG: CampaignLensConfig = {
   },
   allowlist: [],
   blocklist: [],
+  harmfulNarrativeWatchlist: [],
   windowMinutes: 60,
   evidenceCap: 10_000,
   evidenceCapPerSignal: 50,
