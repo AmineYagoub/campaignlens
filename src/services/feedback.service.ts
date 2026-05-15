@@ -1,12 +1,13 @@
 import type { ModFeedback, FeedbackRecord, PrecisionStats } from '../types/feedback';
-import type { DossierAction } from '../types/dossier';
+import type { DossierFeedback, DossierStatus } from '../types/dossier';
+import type { CampaignLensConfig } from '../types/config';
 import { getDossier, updateDossierStatus } from './dossier.service';
 import { getConfig, saveConfig } from './config.service';
 import { PRECISION_KEY } from './redis-keys.service';
 import { getEvidenceForContent } from './content-ingestion.service';
-import { safeGet, safeSet, safeExpire, safeZAdd } from './redis-safe.service';
+import { safeGet, safeSet, safeExpire, safeZAdd } from '../devvit/redis-client';
 
-const FEEDBACK_TO_STATUS: Record<DossierAction, string> = {
+const FEEDBACK_TO_STATUS: Record<DossierFeedback, DossierStatus> = {
   WATCH: 'WATCH',
   IGNORE: 'IGNORED',
   BENIGN: 'BENIGN',
@@ -15,7 +16,7 @@ const FEEDBACK_TO_STATUS: Record<DossierAction, string> = {
   ESCALATE: 'ESCALATED',
 };
 
-export async function handleFeedback(dossierId: string, feedback: DossierAction): Promise<void> {
+export async function handleFeedback(dossierId: string, feedback: DossierFeedback): Promise<void> {
   const dossier = await getDossier(dossierId);
   if (!dossier) return;
 
@@ -28,7 +29,8 @@ export async function handleFeedback(dossierId: string, feedback: DossierAction)
   };
   const feedbackKey = `cl:feedback:${dossier.signalKey}`;
   const wrote = await safeZAdd(feedbackKey, { member: JSON.stringify(record), score: record.createdAt });
-  if (wrote) await safeExpire(feedbackKey, 180 * 24 * 3600); // 180 days
+  if (!wrote) throw new Error('Failed to persist feedback record.');
+  await safeExpire(feedbackKey, 180 * 24 * 3600); // 180 days
 
   // Update precision stats (only for ModFeedback types)
   const modFeedbacks: ModFeedback[] = ['BENIGN', 'WATCH', 'IGNORE', 'CONFIRMED_CAMPAIGN', 'FALSE_POSITIVE'];
@@ -38,16 +40,30 @@ export async function handleFeedback(dossierId: string, feedback: DossierAction)
   }
 
   // Map to status and update
-  const status = FEEDBACK_TO_STATUS[feedback as DossierAction];
+  const status = FEEDBACK_TO_STATUS[feedback];
   if (status) {
-    await updateDossierStatus(dossierId, status as never);
+    await updateDossierStatus(dossierId, status);
   }
 }
 
-export async function adjustWeights(signalKey: string, feedback: ModFeedback): Promise<void> {
+async function adjustWeights(signalKey: string, feedback: ModFeedback): Promise<void> {
+  await adjustWeightsForSignals([signalKey], feedback);
+}
+
+async function adjustWeightsForSignals(signalKeys: string[], feedback: ModFeedback): Promise<void> {
   const config = await getConfig();
   const w = { ...config.weights };
+  const uniqueSignalKeys = [...new Set(signalKeys)];
 
+  for (const signalKey of uniqueSignalKeys) {
+    applyWeightFeedback(w, signalKey, feedback);
+  }
+
+  config.weights = w;
+  await saveConfig(config);
+}
+
+function applyWeightFeedback(w: CampaignLensConfig['weights'], signalKey: string, feedback: ModFeedback): void {
   switch (feedback) {
     case 'BENIGN':
       // Decrease strongest signal weight by 0.02 (min 0.05)
@@ -72,9 +88,6 @@ export async function adjustWeights(signalKey: string, feedback: ModFeedback): P
       // No weight adjustment
       break;
   }
-
-  config.weights = w;
-  await saveConfig(config);
 }
 
 function decreaseStrongestWeight(
@@ -110,7 +123,8 @@ async function updatePrecisionStats(feedback: ModFeedback): Promise<void> {
       break;
   }
 
-  await safeSet(PRECISION_KEY, JSON.stringify(stats));
+  const wrote = await safeSet(PRECISION_KEY, JSON.stringify(stats));
+  if (!wrote) throw new Error('Failed to persist precision stats.');
 }
 
 export async function handleModAction(trigger: Record<string, unknown>): Promise<void> {
@@ -124,18 +138,14 @@ export async function handleModAction(trigger: Record<string, unknown>): Promise
     if (!evidence) return;
 
     if (evidence.signalKeys) {
-      for (const signalKey of evidence.signalKeys) {
-        await adjustWeights(signalKey, 'CONFIRMED_CAMPAIGN');
-      }
+      await adjustWeightsForSignals(evidence.signalKeys, 'CONFIRMED_CAMPAIGN');
     }
   } else if (action === 'approve') {
     const evidence = await getEvidenceForContent(targetId);
     if (!evidence) return;
 
     if (evidence.signalKeys) {
-      for (const signalKey of evidence.signalKeys) {
-        await adjustWeights(signalKey, 'BENIGN');
-      }
+      await adjustWeightsForSignals(evidence.signalKeys, 'BENIGN');
     }
   }
 }
