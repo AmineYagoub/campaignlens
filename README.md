@@ -105,7 +105,7 @@ Note: CampaignLens is pinned to the Devvit `@next` build above because Devvit `0
 1. Run `npm run dev`.
 2. Open the playtest URL and refresh after upload.
 3. Use the moderator menu item to open CampaignLens Atlas.
-4. Create at least five real posts in separate threads containing the same repeated domain.
+4. Create at least three real posts in separate threads containing the same repeated domain or phrase.
 5. Confirm an active dossier appears.
 6. Open the dossier detail screen.
 7. Verify score breakdown, replay, evidence cards, timeline, and explanation bullets.
@@ -154,4 +154,4 @@ Publish `v0.1.0` only after playtest validation:
 npm run launch
 ```
 
-Create the matching GitHub release tag as `v0.1.0`.
+`npm run launch` uploads, publishes to Reddit with the package version, creates the matching git tag, pushes it, and creates the GitHub release from `docs/release-v0.1.0.md`. Run it only after committing and pushing a clean working tree.
