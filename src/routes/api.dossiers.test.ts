@@ -6,6 +6,7 @@ function makeDossier(overrides: Partial<EvidenceDossier> = {}): EvidenceDossier 
   return {
     id: 'dossier-1',
     clusterKey: 'domain:example.com',
+    category: 'COMMERCIAL_PROMOTION',
     status: 'WATCH',
     score: {
       total: 55,

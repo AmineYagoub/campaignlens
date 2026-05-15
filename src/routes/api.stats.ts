@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { DOSSIERS_ACTIVE_KEY, PRECISION_KEY } from '../services/redis-keys.service';
-import { safeGet, safeZCard } from '../services/redis-safe.service';
+import { safeGet, safeZCard } from '../devvit/redis-client';
 import type { PrecisionStats } from '../types/feedback';
 
 export const apiStats = new Hono().basePath('/api/stats');
