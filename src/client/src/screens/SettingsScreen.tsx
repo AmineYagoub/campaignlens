@@ -1,15 +1,32 @@
 import { useState, useEffect } from 'react';
-import { showToast } from '@devvit/web/client';
 import { useConfig } from '../hooks/useConfig';
+import { showClientToast } from '../devvit/client';
 import type { CampaignLensConfig } from '../../../types/config';
+import type { HealthReport } from '../../../types/health';
+import { fetchHealth } from '../lib/api';
 
 export function SettingsScreen() {
   const { config, loading, error, save } = useConfig();
   const [draft, setDraft] = useState<CampaignLensConfig>(config);
+  const [health, setHealth] = useState<HealthReport | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(config);
   }, [config]);
+
+  useEffect(() => {
+    void loadHealth();
+  }, []);
+
+  const loadHealth = async () => {
+    try {
+      setHealthError(null);
+      setHealth(await fetchHealth());
+    } catch (e) {
+      setHealthError(e instanceof Error ? e.message : 'Failed to load diagnostics');
+    }
+  };
 
   if (loading) {
     return <div className="text-center py-12 text-gray-400 text-sm">Loading settings...</div>;
@@ -25,7 +42,7 @@ export function SettingsScreen() {
 
   const handleSave = async () => {
     await save(draft);
-    showToast({ text: 'Settings saved', appearance: 1 });
+    showClientToast({ text: 'Settings saved', appearance: 1 });
   };
 
   return (
@@ -165,8 +182,16 @@ export function SettingsScreen() {
             placeholder="suspicious.example.com"
             onChange={(blocklist) => setDraft({ ...draft, blocklist })}
           />
+          <ListField
+            label="Harmful Narrative Terms"
+            value={draft.harmfulNarrativeWatchlist}
+            placeholder={`coded slogan\nviolent call to action`}
+            onChange={(harmfulNarrativeWatchlist) => setDraft({ ...draft, harmfulNarrativeWatchlist })}
+          />
         </div>
       </div>
+
+      <DiagnosticsCard health={health} error={healthError} onRefresh={loadHealth} />
 
       <button
         className="w-full px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
@@ -174,6 +199,81 @@ export function SettingsScreen() {
       >
         Save Settings
       </button>
+    </div>
+  );
+}
+
+function DiagnosticsCard({
+  health,
+  error,
+  onRefresh,
+}: {
+  health: HealthReport | null;
+  error: string | null;
+  onRefresh: () => Promise<void>;
+}) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-medium text-gray-700">Diagnostics</h3>
+          <p className="mt-1 text-xs text-gray-400">No raw content, usernames, or author identity.</p>
+        </div>
+        <button
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+          onClick={() => void onRefresh()}
+          type="button"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {error && <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</div>}
+
+      {!error && !health && (
+        <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-400">Loading diagnostics...</div>
+      )}
+
+      {health && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">System</span>
+            <span className={health.status === 'healthy' ? 'text-xs font-semibold text-green-700' : 'text-xs font-semibold text-orange-700'}>
+              {health.status.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            <Metric label="Active dossiers" value={health.metrics.activeDossiers} />
+            <Metric label="Action records" value={health.metrics.actionHistoryRecords} />
+            <Metric label="Baseline" value={health.metrics.baselineMode.replace('_', ' ')} />
+            <Metric label="Memory caps" value={health.metrics.memoryPressure ? 'Active' : 'Normal'} />
+          </div>
+
+          <div className="space-y-2">
+            {Object.entries(health.checks).map(([name, check]) => (
+              <div key={name} className="rounded-lg border border-gray-100 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium capitalize text-gray-700">{name}</span>
+                  <span className={check.status === 'healthy' ? 'text-xs font-semibold text-green-700' : 'text-xs font-semibold text-orange-700'}>
+                    {check.status}
+                  </span>
+                </div>
+                {check.message && <p className="mt-1 text-xs text-gray-400">{check.message}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg bg-gray-50 p-3">
+      <div className="text-gray-400">{label}</div>
+      <div className="mt-1 font-semibold text-gray-700">{value}</div>
     </div>
   );
 }
