@@ -1,8 +1,9 @@
-node_modules
-.DS_Store
-dist
+node_modules/
+dist/
 .env
-docs
-.claude
-.vscode
-.code-review-graph
+.env.*
+.DS_Store
+.claude/
+.vscode/
+.code-review-graph/
+*.log

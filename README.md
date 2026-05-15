@@ -1,8 +1,14 @@
 # CampaignLens Atlas
 
-CampaignLens Atlas is a Devvit-native moderator tool for spotting suspicious commercial promotion patterns inside a subreddit. It turns repeated domains, brand mentions, link obfuscation, timing bursts, near-duplicate phrasing, reports, and thread spread into explainable evidence dossiers.
+CampaignLens Atlas is a Devvit-native moderator tool for spotting suspicious coordinated campaign patterns inside a subreddit. It turns repeated domains, brand mentions, moderator-configured harmful narrative terms, link obfuscation, timing bursts, near-duplicate phrasing, reports, and thread spread into explainable evidence dossiers.
 
 CampaignLens does not label users, score accounts, ban automatically, remove automatically, or send data to external AI services. It gives moderators structured evidence so they can decide what to do.
+
+## Release
+
+Current release candidate: `v0.1.0`.
+
+This version has been playtested in `r/campaignlens_dev` with the full moderator loop: detect a repeated pattern, inspect the dossier, preview a reversible moderation action, execute `LOCK`, and verify item-level action history.
 
 ## What It Does
 
@@ -69,7 +75,7 @@ Expected current status:
 
 - TypeScript passes.
 - ESLint passes.
-- Vitest passes with 162 tests.
+- Vitest passes with 171 tests.
 - Vite build completes.
 
 ## Reddit Playtest
@@ -90,34 +96,16 @@ Use the subreddit moderator menu item:
 Open CampaignLens Atlas
 ```
 
-The menu handler creates a CampaignLens dashboard custom post and navigates to it. If Devvit playtest rejects custom post creation, it opens the playtest subreddit with a neutral toast instead of failing the endpoint.
+The menu handler creates a CampaignLens dashboard custom post and navigates to it. If Devvit rejects custom post creation, the app shows a visible error toast and logs the failure.
 
 Note: CampaignLens is pinned to the Devvit `@next` build above because Devvit `0.12.20` and `0.12.21` reproduced an opaque `SubmitCustomPost` runtime failure (`undefined undefined: undefined`) during playtest. The pinned `@next` build created the dashboard post successfully in `r/campaignlens_dev` on 2026-05-02.
-
-## Demo Data
-
-From the dashboard webview, the API is available only to moderators. You can seed/reset demo data through the API while playtesting.
-
-Seed:
-
-```bash
-curl -X POST https://www.reddit.com/r/campaignlens_dev/?playtest=campaignlens/api/demo/seed
-```
-
-In practice, Reddit webview API calls are easiest to exercise from inside the running Devvit webview or through app routes in playtest tooling. If direct `curl` is blocked by Reddit auth/context, use real posts/comments instead.
-
-Reset:
-
-```bash
-POST /api/demo/reset
-```
 
 ## Real Test Checklist
 
 1. Run `npm run dev`.
 2. Open the playtest URL and refresh after upload.
 3. Use the moderator menu item to open CampaignLens Atlas.
-4. Seed demo data or create posts/comments containing a repeated domain such as `demo-campaign.example`.
+4. Create at least five real posts in separate threads containing the same repeated domain.
 5. Confirm an active dossier appears.
 6. Open the dossier detail screen.
 7. Verify score breakdown, replay, evidence cards, timeline, and explanation bullets.
@@ -138,11 +126,13 @@ POST /api/demo/reset
 - Ingestion pipeline: `src/services/content-ingestion.service.ts`
 - Dossier logic: `src/services/dossier.service.ts`
 - Scoring: `src/services/scoring.service.ts`
-- Redis safety wrapper: `src/services/redis-safe.service.ts`
+- Devvit SDK adapters: `src/devvit/*`
+- Redis adapter: `src/devvit/redis-client.ts`
 - Trigger budget tracker: `src/services/trigger-budget.service.ts`
 - React app: `src/client/src/app/App.tsx`
-- Remediation plan: `docs/remediation-plan.md`
+- Hackathon pitch: `docs/hackathon-pitch.md`
 - Playtest runbook: `docs/reddit-playtest-runbook.md`
+- Hard version roadmap: `docs/hard-version-roadmap.md`
 
 ## Privacy And Safety Notes
 
@@ -152,14 +142,16 @@ Moderator-facing language should stay evidence-based: say a pattern is unusual, 
 
 ## Deployment
 
-Upload a new version:
+Upload a new Devvit app version:
 
 ```bash
 npm run deploy
 ```
 
-Publish only after playtest validation:
+Publish `v0.1.0` only after playtest validation:
 
 ```bash
 npm run launch
 ```
+
+Create the matching GitHub release tag as `v0.1.0`.
