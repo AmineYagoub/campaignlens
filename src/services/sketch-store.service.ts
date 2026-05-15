@@ -1,6 +1,6 @@
 import { seenKey, deletedKey } from './redis-keys.service';
 import { TTL } from './ttl.service';
-import { safeHDel, safeHGet, safeHSet, safeExpire } from './redis-safe.service';
+import { safeHDel, safeHGet, safeHSet, safeExpire } from '../devvit/redis-client';
 
 export async function isProcessed(contentId: string): Promise<boolean> {
   const now = Date.now();

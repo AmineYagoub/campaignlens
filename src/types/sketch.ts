@@ -9,13 +9,6 @@ export type InteractionSketch = {
   simhash64?: string;
 };
 
-export type BloomFilterConfig = {
-  capacity: number;
-  fpRate: number;
-  bitCount: number;
-  hashCount: number;
-};
-
 export type CandidateGateResult = {
   isCandidate: boolean;
   reasons: string[];
