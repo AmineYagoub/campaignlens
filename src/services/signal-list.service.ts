@@ -1,14 +1,14 @@
 import type { CampaignLensConfig } from '../types/config';
 
-export function signalValue(signalKey: string): string {
+function signalValue(signalKey: string): string {
   return signalKey.includes(':') ? signalKey.split(':').slice(1).join(':') : signalKey;
 }
 
-export function normalizedListValue(value: string): string {
+function normalizedListValue(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export function signalMatchesList(signalKey: string, list: string[]): boolean {
+function signalMatchesList(signalKey: string, list: string[]): boolean {
   const key = normalizedListValue(signalKey);
   const value = normalizedListValue(signalValue(signalKey));
 

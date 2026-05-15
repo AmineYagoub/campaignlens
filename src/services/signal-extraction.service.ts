@@ -3,7 +3,7 @@ import { extractDomainSignals } from '../utils/url-extraction';
 import { createShortExcerpt } from '../utils/excerpt';
 import { extractBrandKeys } from './brand-extractor.service';
 
-export function detectObfuscation(input: string): ObfuscationFlag[] {
+function detectObfuscation(input: string): ObfuscationFlag[] {
   const flags: ObfuscationFlag[] = [];
   const lower = input.toLowerCase();
 
@@ -39,7 +39,7 @@ export function detectObfuscation(input: string): ObfuscationFlag[] {
   return flags;
 }
 
-export function extractSignals(_text: string, originalText: string): ExtractedSignals {
+export function extractSignals(originalText: string): ExtractedSignals {
   const domainSignals = extractDomainSignals(originalText);
   const obfuscationFlags = detectObfuscation(originalText);
   const shortExcerpt = createShortExcerpt(originalText);
