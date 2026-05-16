@@ -25,15 +25,23 @@ export function useDossiers() {
   useEffect(() => {
     void load();
 
-    void connectClientRealtime<{ dossierId: string; action: string }>({
-      channel: DOSSIER_UPDATES_CHANNEL,
-      onMessage: () => {
-        void load();
-      },
+    void Promise.resolve(
+      connectClientRealtime<{ dossierId: string; action: string }>({
+        channel: DOSSIER_UPDATES_CHANNEL,
+        onMessage: () => {
+          void load();
+        },
+      })
+    ).catch((e) => {
+      console.warn('CampaignLens realtime dossier subscription failed; manual refresh remains available', e);
     });
 
     return () => {
-      disconnectClientRealtime(DOSSIER_UPDATES_CHANNEL);
+      try {
+        disconnectClientRealtime(DOSSIER_UPDATES_CHANNEL);
+      } catch (e) {
+        console.warn('CampaignLens realtime dossier disconnect failed', e);
+      }
     };
   }, [load]);
 

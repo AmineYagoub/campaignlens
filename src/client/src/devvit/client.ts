@@ -1,4 +1,5 @@
 import { context, connectRealtime, disconnectRealtime, showToast } from '@devvit/web/client';
+import * as devvitClient from '@devvit/web/client';
 import { assertValidRealtimeChannel } from '../../../devvit/realtime-channels';
 
 export const clientContext = context;
@@ -22,4 +23,14 @@ export function connectClientRealtime<TMessage>(opts: {
 export function disconnectClientRealtime(channel: string): void {
   assertValidRealtimeChannel(channel);
   disconnectRealtime(channel);
+}
+
+export function requestClientExpandedMode(event: MouseEvent, entry: string): void {
+  const { requestExpandedMode } = devvitClient as typeof devvitClient & {
+    requestExpandedMode?: (event: MouseEvent, entry: string) => void;
+  };
+  if (!requestExpandedMode) {
+    throw new Error('Expanded mode is not available in this Devvit client.');
+  }
+  requestExpandedMode(event, entry);
 }

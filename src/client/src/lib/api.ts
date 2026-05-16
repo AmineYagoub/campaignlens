@@ -89,7 +89,7 @@ export async function fetchActionHistory(limit = 50): Promise<ActionExecutionRec
 }
 
 export async function fetchReviewQueue(limit = 50): Promise<ReviewQueueItem[]> {
-  const res = await fetch(`/api/review-queue?limit=${encodeURIComponent(String(limit))}`);
+  const res = await fetch(`/api/review/queue?limit=${encodeURIComponent(String(limit))}`);
   if (!res.ok) throw await parseError(res, 'Failed to fetch review queue');
   return res.json();
 }
@@ -102,7 +102,7 @@ export async function postReviewEvent(
     proposedAction?: string;
   }
 ): Promise<ReviewEvent> {
-  const res = await fetch(`/api/dossiers/${dossierId}/review-events`, {
+  const res = await fetch(`/api/review/dossiers/${dossierId}/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
