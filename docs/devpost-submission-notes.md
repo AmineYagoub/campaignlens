@@ -56,7 +56,7 @@ CampaignLens reduces manual investigation time by grouping cross-thread signals 
 
 ### Polish
 
-The v1.0.1 release includes a Devvit Web dashboard, inline launch post, Expanded Mode workflow, settings, diagnostics, app icon, user docs, app review notes, privacy summary, permission matrix, release notes, and support guidance.
+The v1.0.2 release includes a Devvit Web dashboard, inline launch post, Expanded Mode workflow, settings, diagnostics, app icon, user docs, app review notes, privacy summary, permission matrix, release notes, and support guidance.
 
 ### Reliable UX
 
@@ -72,7 +72,7 @@ CampaignLens brings a broad, reusable campaign-analysis workflow to Devvit: evid
 - No stored usernames, moderator IDs, reporter IDs, author IDs, or author hashes.
 - No external LLM, embedding, analytics, or classifier calls.
 - No cross-subreddit intelligence.
-- Ban and mute actions are disabled in v1.0.1.
+- Ban and mute actions are disabled in v1.0.2.
 - Content outside the installed subreddit is rejected during action preview.
 - Inline view is launch-only; full dashboard opens in Expanded Mode.
 
@@ -94,5 +94,5 @@ CampaignLens brings a broad, reusable campaign-analysis workflow to Devvit: evid
 - App listing: add the developer.reddit.com app URL after publishing.
 - Repository: [github.com/AmineYagoub/campaignlens](https://github.com/AmineYagoub/campaignlens)
 - Issues: [github.com/AmineYagoub/campaignlens/issues](https://github.com/AmineYagoub/campaignlens/issues)
-- Release notes: [release-v1.0.1.md](release-v1.0.1.md)
+- Release notes: [release-v1.0.2.md](release-v1.0.2.md)
 - User guide: [user-guide-and-settings.md](user-guide-and-settings.md)

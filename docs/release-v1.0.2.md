@@ -1,10 +1,10 @@
-# CampaignLens v1.0.0 Release Notes
+# CampaignLens v1.0.2 Release Notes
 
 Release date: May 16, 2026
 
 ## Summary
 
-CampaignLens v1.0.0 is the hackathon launch and Reddit review release. It provides an evidence-first moderator workflow for detecting coordinated campaign-shaped activity without storing user identities, calling external AI services, or taking automatic enforcement action.
+CampaignLens v1.0.2 is a version bump release to resolve a Devvit upload version conflict. All features and behavior are unchanged from v1.0.1.
 
 Core loop:
 
@@ -15,9 +15,10 @@ Core loop:
 5. Execute only after explicit confirmation.
 6. Store item-level action history without moderator or author identity.
 
-## Hackathon Context
+## Changes Since v1.0.1
 
-CampaignLens was built for the [Reddit Mod Tools Migration Hackathon](https://mod-tools-migration.devpost.com). The v1.0.0 submission focuses on a complete, judge-testable moderation loop rather than a mock dashboard.
+- Bumped app version to 1.0.2 to resolve Devvit AppVersion already exists upload error.
+- Updated version references in health service, README, and documentation.
 
 ## What Works
 
@@ -33,9 +34,6 @@ CampaignLens was built for the [Reddit Mod Tools Migration Hackathon](https://mo
 - Reversible actions such as `LOCK`, `UNLOCK`, `APPROVE`, `REMOVE`, `SPAM`, and `IGNORE_REPORTS` execute only after explicit confirmation.
 - Action history records item-level succeeded, failed, and skipped outcomes.
 - Diagnostics report app version, Redis/config/baseline/memory health, active dossier count, and action history count.
-- API routes return structured JSON errors for moderator-only diagnostics and review screens.
-- Configuration updates reject out-of-range numeric values before saving.
-- App icon is included at `assets/icon.png` and wired through `devvit.json` marketing assets.
 
 ## Safety Properties
 
@@ -52,25 +50,10 @@ CampaignLens was built for the [Reddit Mod Tools Migration Hackathon](https://mo
 ```bash
 npm run type-check
 npm run lint
-npm run test
 npm run build
 ```
 
-Expected status: all checks pass; Vitest reports 23 test files and 173 tests.
-
-## Verified On Reddit
-
-Playtest subreddit: `r/campaignlens_dev`
-
-Validated flows:
-
-- CampaignLens opened from the subreddit moderator menu.
-- Inline launch post showed no scroll-trapping dashboard.
-- Expanded dashboard opened from `Open dashboard`.
-- Repeated `campaign.example` and `demo-campaign.example` content created dossiers.
-- Harmful narrative watch terms categorized a dossier as `Possible Harmful Narrative`.
-- `LOCK` and `UNLOCK` executed against selected Reddit posts.
-- Action history showed item-level success results.
+Expected status: all checks pass.
 
 ## Support
 
@@ -86,9 +69,4 @@ Publish to Reddit and GitHub:
 npm run launch
 ```
 
-The launch script creates and pushes the `v1.0.0` git tag, then creates the GitHub release from this file. It requires a clean committed working tree, an authenticated Devvit CLI session, and an authenticated `gh` CLI session.
-
-## Changelog After v1.0.0
-
-See [release-v1.0.1.md](release-v1.0.1.md) for the hackathon submission polish release.
-See [release-v1.0.2.md](release-v1.0.2.md) for the version bump release.
+The launch script creates and pushes the `v1.0.2` git tag, then creates the GitHub release from this file. It requires a clean committed working tree, an authenticated Devvit CLI session, and an authenticated `gh` CLI session.

@@ -47,9 +47,14 @@ Yes. Use a test subreddit and follow the [Reddit playtest runbook](docs/reddit-p
 - [Support and operations](docs/support-and-operations.md)
 - [Devpost submission notes](docs/devpost-submission-notes.md)
 - [Roadmap](docs/roadmap.md)
+- [v1.0.2 release notes](docs/release-v1.0.2.md)
 - [v1.0.1 release notes](docs/release-v1.0.1.md)
 
 ## Changelog
+
+### 1.0.2
+
+- Bumps app version to 1.0.2 to resolve Devvit upload version conflict.
 
 ### 1.0.1
 
@@ -87,4 +92,4 @@ Publish after committing a clean working tree:
 npm run launch
 ```
 
-`npm run launch` uploads and publishes the Devvit app with the package version, creates the matching git tag, pushes it, and creates the GitHub release from `docs/release-v1.0.1.md`.
+`npm run launch` uploads and publishes the Devvit app with the package version, creates the matching git tag, pushes it, and creates the GitHub release from `docs/release-v$npm_package_version.md`.
