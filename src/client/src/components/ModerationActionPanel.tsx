@@ -21,12 +21,12 @@ type ActionOption = {
 };
 
 const ACTIONS: ActionOption[] = [
-  { kind: 'REMOVE', label: 'Remove', tone: 'border-red-200 bg-red-50 text-red-700' },
-  { kind: 'MARK_SPAM', label: 'Spam', tone: 'border-rose-200 bg-rose-50 text-rose-700' },
-  { kind: 'APPROVE', label: 'Approve', tone: 'border-green-200 bg-green-50 text-green-700' },
-  { kind: 'LOCK', label: 'Lock', tone: 'border-amber-200 bg-amber-50 text-amber-700' },
-  { kind: 'UNLOCK', label: 'Unlock', tone: 'border-sky-200 bg-sky-50 text-sky-700' },
-  { kind: 'IGNORE_REPORTS', label: 'Ignore reports', tone: 'border-gray-200 bg-gray-50 text-gray-700' },
+  { kind: 'REMOVE', label: 'Remove', tone: 'border-gray-900 bg-gray-900 text-white' },
+  { kind: 'MARK_SPAM', label: 'Spam', tone: 'border-gray-900 bg-gray-900 text-white' },
+  { kind: 'APPROVE', label: 'Approve', tone: 'border-gray-900 bg-gray-900 text-white' },
+  { kind: 'LOCK', label: 'Lock', tone: 'border-gray-900 bg-gray-900 text-white' },
+  { kind: 'UNLOCK', label: 'Unlock', tone: 'border-gray-900 bg-gray-900 text-white' },
+  { kind: 'IGNORE_REPORTS', label: 'Ignore reports', tone: 'border-gray-900 bg-gray-900 text-white' },
 ];
 
 function exampleLabel(example: DossierExample, index: number): string {
@@ -123,7 +123,7 @@ export function ModerationActionPanel({ dossierId, examples, onExecuted }: Props
           <p className="mt-0.5 text-xs text-gray-400">Select content, preview current Reddit state, then confirm.</p>
         </div>
         <button
-          className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-black"
           onClick={() => setOpen((current) => !current)}
           type="button"
         >
@@ -138,7 +138,7 @@ export function ModerationActionPanel({ dossierId, examples, onExecuted }: Props
 
       {!open && (
         <button
-          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-700"
+          className="w-full rounded-lg bg-gray-900 px-3 py-3 text-sm font-semibold text-white hover:bg-black"
           onClick={() => setOpen(true)}
           type="button"
         >
@@ -231,7 +231,7 @@ export function ModerationActionPanel({ dossierId, examples, onExecuted }: Props
           </label>
 
           <button
-            className="mt-3 w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="mt-3 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-40"
             disabled={!confirmed || executing}
             onClick={executePreview}
             type="button"
@@ -242,7 +242,7 @@ export function ModerationActionPanel({ dossierId, examples, onExecuted }: Props
       )}
 
       {lastResult && (
-        <div className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+        <div className="mt-3 rounded-lg bg-emerald-100 p-3 text-sm font-medium text-emerald-800">
           {resultText(lastResult)}
         </div>
       )}

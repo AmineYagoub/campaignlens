@@ -35,21 +35,21 @@ export function FeedbackBar({ dossierId, onFeedback }: FeedbackBarProps) {
       </div>
       <div className="flex gap-2">
         <button
-          className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
           disabled={loading}
           onClick={() => handleFeedback('WATCH')}
         >
           Watch
         </button>
         <button
-          className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
           disabled={loading}
           onClick={() => handleFeedback('IGNORE')}
         >
           Ignore
         </button>
         <button
-          className="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
           disabled={loading}
           onClick={() => setExpanded(!expanded)}
         >
@@ -60,28 +60,28 @@ export function FeedbackBar({ dossierId, onFeedback }: FeedbackBarProps) {
       {expanded && (
         <div className="flex gap-2 mt-2">
           <button
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
             disabled={loading}
             onClick={() => handleFeedback('BENIGN')}
           >
             Benign
           </button>
           <button
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
             disabled={loading}
             onClick={() => handleFeedback('CONFIRMED_CAMPAIGN')}
           >
             Campaign
           </button>
           <button
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
             disabled={loading}
             onClick={() => handleFeedback('ESCALATE')}
           >
             Escalate
           </button>
           <button
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
             disabled={loading}
             onClick={() => handleFeedback('FALSE_POSITIVE')}
           >

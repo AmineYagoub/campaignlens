@@ -6,7 +6,7 @@ import type { HealthReport } from '../../../types/health';
 import { fetchHealth } from '../lib/api';
 
 export function SettingsScreen() {
-  const { config, loading, error, save } = useConfig();
+  const { config, loading, saving, error, save } = useConfig();
   const [draft, setDraft] = useState<CampaignLensConfig>(config);
   const [health, setHealth] = useState<HealthReport | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -41,8 +41,15 @@ export function SettingsScreen() {
   }
 
   const handleSave = async () => {
-    await save(draft);
-    showClientToast({ text: 'Settings saved', appearance: 1 });
+    try {
+      await save(draft);
+      showClientToast({ text: 'Settings saved', appearance: 1 });
+    } catch (e) {
+      showClientToast({
+        text: e instanceof Error ? e.message : 'Failed to save settings',
+        appearance: 0,
+      });
+    }
   };
 
   return (
@@ -194,10 +201,12 @@ export function SettingsScreen() {
       <DiagnosticsCard health={health} error={healthError} onRefresh={loadHealth} />
 
       <button
-        className="w-full px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+        className="w-full px-4 py-2.5 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-black disabled:cursor-wait disabled:opacity-50"
+        disabled={saving}
         onClick={handleSave}
+        type="button"
       >
-        Save Settings
+        {saving ? 'Saving...' : 'Save Settings'}
       </button>
     </div>
   );

@@ -6,6 +6,7 @@ import { DEFAULT_CONFIG } from '../../../types/config';
 export function useConfig() {
   const [config, setConfig] = useState<CampaignLensConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -23,11 +24,17 @@ export function useConfig() {
 
   const save = useCallback(async (updated: CampaignLensConfig) => {
     try {
+      setSaving(true);
       setError(null);
       const data = await updateConfig(updated);
       setConfig(data);
+      return data;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save config');
+      const message = e instanceof Error ? e.message : 'Failed to save config';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
     }
   }, []);
 
@@ -35,5 +42,5 @@ export function useConfig() {
     void load();
   }, [load]);
 
-  return { config, loading, error, save, refresh: load };
+  return { config, loading, saving, error, save, refresh: load };
 }

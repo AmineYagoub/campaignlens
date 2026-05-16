@@ -27,7 +27,7 @@ export function PreviewApp() {
         </p>
 
         <button
-          className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+          className="w-full cursor-pointer rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
           onClick={(event) => void openDashboard(event)}
           type="button"
         >

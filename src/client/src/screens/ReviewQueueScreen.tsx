@@ -102,21 +102,21 @@ function ReviewQueueCard({
 
       <div className="mt-3 grid grid-cols-3 gap-2">
         <button
-          className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-black"
           onClick={() => onRecordEvent('CLAIM')}
           type="button"
         >
           Claim
         </button>
         <button
-          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-black"
           onClick={() => onRecordEvent('RELEASE')}
           type="button"
         >
           Release
         </button>
         <button
-          className="rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-black"
           onClick={() => onRecordEvent('REQUEST_SECOND_REVIEW')}
           type="button"
         >
