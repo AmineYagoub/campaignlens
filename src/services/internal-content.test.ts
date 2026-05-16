@@ -5,10 +5,10 @@ import type { EvidenceDossier } from '../types/dossier';
 function makeDossier(excerpt: string): EvidenceDossier {
   return {
     id: 'dossier-1',
-    clusterKey: 'brand:atlas',
+    clusterKey: 'brand:campaignlens',
     category: 'UNKNOWN',
     status: 'NEEDS_REVIEW',
-    signalKey: 'brand:atlas',
+    signalKey: 'brand:campaignlens',
     score: {
       total: 55,
       domainBurst: 0,
@@ -24,7 +24,7 @@ function makeDossier(excerpt: string): EvidenceDossier {
     examples: [
       {
         excerpt,
-        matchedFragments: ['atlas'],
+        matchedFragments: ['campaignlens'],
         flags: [],
         threadId: 't3_post',
         createdAt: 1,
@@ -40,25 +40,25 @@ function makeDossier(excerpt: string): EvidenceDossier {
 describe('internal CampaignLens content detection', () => {
   it('detects CampaignLens dashboard custom posts', () => {
     expect(
-      isCampaignLensDashboardPost('CampaignLens Atlas', 'CampaignLens Atlas moderator dashboard.')
+      isCampaignLensDashboardPost('CampaignLens', 'CampaignLens moderator dashboard.')
     ).toBe(true);
   });
 
   it('does not block ordinary posts mentioning CampaignLens', () => {
     expect(
-      isCampaignLensDashboardPost('CampaignLens Atlas review', 'People are discussing a launch.')
+      isCampaignLensDashboardPost('CampaignLens review', 'People are discussing a launch.')
     ).toBe(false);
   });
 
   it('detects internal dashboard-only dossiers', () => {
     expect(
-      isCampaignLensInternalDossier(makeDossier('CampaignLens Atlas moderator dashboard.'))
+      isCampaignLensInternalDossier(makeDossier('CampaignLens moderator dashboard.'))
     ).toBe(true);
   });
 
   it('detects older dossiers whose excerpt includes the custom post title and fallback text', () => {
     expect(
-      isCampaignLensInternalDossier(makeDossier('CampaignLens Atlas CampaignLens Atlas moderator dashboard.'))
+      isCampaignLensInternalDossier(makeDossier('CampaignLens CampaignLens moderator dashboard.'))
     ).toBe(true);
   });
 

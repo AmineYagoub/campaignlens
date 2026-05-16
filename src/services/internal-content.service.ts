@@ -1,7 +1,7 @@
 import type { EvidenceDossier } from '../types/dossier';
 
-const DASHBOARD_TITLE = 'campaignlens atlas';
-const DASHBOARD_TEXT = 'campaignlens atlas moderator dashboard';
+const DASHBOARD_TITLE = 'campaignlens';
+const DASHBOARD_TEXT = 'campaignlens moderator dashboard';
 const DASHBOARD_COMBINED_TEXT = `${DASHBOARD_TITLE} ${DASHBOARD_TEXT}`;
 
 function normalize(value: string): string {
