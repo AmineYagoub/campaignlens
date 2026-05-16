@@ -18,6 +18,11 @@ apiActions.get('/drafts/:id', async (c) => {
 
 apiActions.delete('/drafts/:id', async (c) => {
   const id = c.req.param('id');
+  const draft = await getActionDraft(id);
+  if (!draft) {
+    return c.json({ error: 'Action draft not found' }, 404);
+  }
+
   const deleted = await deleteActionDraft(id);
   if (!deleted) {
     return c.json({ error: 'Action draft could not be deleted' }, 500);

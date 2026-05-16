@@ -11,7 +11,7 @@ import { readJsonBody } from './request';
 
 export const internalMenu = new Hono().basePath('/internal/menu');
 
-internalMenu.post('/open-atlas', async (c) => {
+internalMenu.post('/open-dashboard', async (c) => {
   const input = await readJsonBody<MenuItemRequest>(c);
   if (input instanceof Response) return input;
 
@@ -35,7 +35,7 @@ internalMenu.post('/open-atlas', async (c) => {
   }
 
   const subredditName = devvitContext.subredditName;
-  console.info('CampaignLens open atlas menu handler', {
+  console.info('CampaignLens open dashboard menu handler', {
     version: MENU_HANDLER_VERSION,
     targetId: input.targetId,
     subredditId: devvitContext.subredditId,
@@ -47,7 +47,7 @@ internalMenu.post('/open-atlas', async (c) => {
 
     return c.json<UiResponse>({
       navigateTo: { url: post.url },
-      showToast: { text: 'CampaignLens Atlas dashboard ready', appearance: 'success' },
+      showToast: { text: 'CampaignLens dashboard ready', appearance: 'success' },
     });
   } catch (error) {
     console.error('CampaignLens failed to open dashboard post', {

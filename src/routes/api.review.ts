@@ -10,43 +10,51 @@ import type { DossierStatus, ReviewEventType } from '../types/dossier';
 import { DOSSIER_STATUSES } from '../types/dossier';
 import { readJsonBody } from './request';
 
-export const apiReview = new Hono().basePath('/api');
+export const apiReview = new Hono().basePath('/api/review');
 
-apiReview.get('/review-queue', async (c) => {
-  const rawStatus = c.req.query('status');
-  let status: DossierStatus | undefined;
-  if (rawStatus) {
-    if (!isDossierStatus(rawStatus)) {
-      return c.json({ error: 'Invalid dossier status' }, 400);
+apiReview.get('/queue', async (c) => {
+  try {
+    const rawStatus = c.req.query('status');
+    let status: DossierStatus | undefined;
+    if (rawStatus) {
+      if (!isDossierStatus(rawStatus)) {
+        return c.json({ error: 'Invalid dossier status' }, 400);
+      }
+      status = rawStatus;
     }
-    status = rawStatus;
+
+    const minScore = parseOptionalNumber(c.req.query('minScore'));
+    const maxAgeHours = parseOptionalNumber(c.req.query('maxAgeHours'));
+    const limit = parseOptionalNumber(c.req.query('limit'));
+    const signal = c.req.query('signal');
+
+    const filters: ReviewQueueFilters = {
+      ...(status ? { status } : {}),
+      ...(signal ? { signal } : {}),
+      ...(minScore !== undefined ? { minScore } : {}),
+      ...(maxAgeHours !== undefined ? { maxAgeHours } : {}),
+      ...(limit !== undefined ? { limit } : {}),
+    };
+
+    const items = await listReviewQueue(filters);
+
+    return c.json(items);
+  } catch {
+    return c.json({ error: 'Failed to fetch review queue' }, 500);
   }
-
-  const minScore = parseOptionalNumber(c.req.query('minScore'));
-  const maxAgeHours = parseOptionalNumber(c.req.query('maxAgeHours'));
-  const limit = parseOptionalNumber(c.req.query('limit'));
-  const signal = c.req.query('signal');
-
-  const filters: ReviewQueueFilters = {
-    ...(status ? { status } : {}),
-    ...(signal ? { signal } : {}),
-    ...(minScore !== undefined ? { minScore } : {}),
-    ...(maxAgeHours !== undefined ? { maxAgeHours } : {}),
-    ...(limit !== undefined ? { limit } : {}),
-  };
-
-  const items = await listReviewQueue(filters);
-
-  return c.json(items);
 });
 
-apiReview.get('/dossiers/:id/review-events', async (c) => {
-  const id = c.req.param('id');
-  const limit = parseOptionalNumber(c.req.query('limit')) ?? 50;
-  return c.json(await listReviewEvents(id, limit));
+apiReview.get('/dossiers/:id/events', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const limit = parseOptionalNumber(c.req.query('limit')) ?? 50;
+    return c.json(await listReviewEvents(id, limit));
+  } catch {
+    return c.json({ error: 'Failed to fetch review events' }, 500);
+  }
 });
 
-apiReview.post('/dossiers/:id/review-events', async (c) => {
+apiReview.post('/dossiers/:id/events', async (c) => {
   const id = c.req.param('id');
   const body = await readJsonBody<{
     type?: unknown;

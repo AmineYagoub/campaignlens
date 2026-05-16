@@ -58,13 +58,6 @@ internalTriggers.post('/on-automod-filter-comment', async (c) => {
   });
 });
 
-internalTriggers.post('/on-app-install', async (c) => {
-  return runDevvitTrigger(c, 'on-app-install', async () => {
-    const input = await c.req.json();
-    console.log('CampaignLens Atlas installed to subreddit:', input.subreddit?.name);
-  });
-});
-
 internalTriggers.post('/on-post-delete', async (c) => {
   return runDevvitTrigger(c, 'on-post-delete', async () => {
     const input = await c.req.json();

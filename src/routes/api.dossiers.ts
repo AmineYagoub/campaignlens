@@ -20,17 +20,25 @@ const VALID_FEEDBACK: DossierFeedback[] = [
 export const apiDossiers = new Hono().basePath('/api/dossiers');
 
 apiDossiers.get('/', async (c) => {
-  const dossiers = await listActiveDossiers();
-  return c.json(dossiers);
+  try {
+    const dossiers = await listActiveDossiers();
+    return c.json(dossiers);
+  } catch {
+    return c.json({ error: 'Failed to fetch dossiers' }, 500);
+  }
 });
 
 apiDossiers.get('/:id', async (c) => {
-  const id = c.req.param('id');
-  const dossier = await getDossier(id);
-  if (!dossier) {
-    return c.json({ error: 'Dossier not found' }, 404);
+  try {
+    const id = c.req.param('id');
+    const dossier = await getDossier(id);
+    if (!dossier) {
+      return c.json({ error: 'Dossier not found' }, 404);
+    }
+    return c.json(dossier);
+  } catch {
+    return c.json({ error: 'Failed to fetch dossier' }, 500);
   }
-  return c.json(dossier);
 });
 
 apiDossiers.post('/:id/feedback', async (c) => {
@@ -107,12 +115,16 @@ apiDossiers.post('/:id/action-preview', async (c) => {
 });
 
 apiDossiers.get('/:id/replay', async (c) => {
-  const id = c.req.param('id');
-  const dossier = await getDossier(id);
-  if (!dossier) {
-    return c.json({ error: 'Dossier not found' }, 404);
+  try {
+    const id = c.req.param('id');
+    const dossier = await getDossier(id);
+    if (!dossier) {
+      return c.json({ error: 'Dossier not found' }, 404);
+    }
+    return c.json(dossier.replayGraph ?? buildReplayGraph(dossier));
+  } catch {
+    return c.json({ error: 'Failed to fetch dossier replay' }, 500);
   }
-  return c.json(dossier.replayGraph ?? buildReplayGraph(dossier));
 });
 
 export function buildReplayGraph(dossier: EvidenceDossier): ReplayGraph {
