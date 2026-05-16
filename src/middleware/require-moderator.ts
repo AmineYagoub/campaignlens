@@ -14,18 +14,22 @@ export async function requireModerator(c: Context, next: Next): Promise<Response
   }
 
   try {
-    const mods = await getModerators({
+    const scopedMods = await getModerators({
       subredditName: moderatorContext.subredditName,
       username: moderatorContext.username,
       limit: 1,
     });
 
-    const modList = await mods.all();
-    const isCurrentUserModerator = modList.some(
-      (mod) => mod.username.toLowerCase() === moderatorContext.username.toLowerCase()
-    );
+    if (await listingContainsCurrentUser(scopedMods, moderatorContext.username)) {
+      return next();
+    }
 
-    if (!isCurrentUserModerator) {
+    const allMods = await getModerators({
+      subredditName: moderatorContext.subredditName,
+      limit: 200,
+    });
+
+    if (!(await listingContainsCurrentUser(allMods, moderatorContext.username))) {
       return c.json({ error: 'Forbidden: moderator access required' }, 403);
     }
 
@@ -33,4 +37,18 @@ export async function requireModerator(c: Context, next: Next): Promise<Response
   } catch {
     return c.json({ error: 'Forbidden: could not verify moderator status' }, 403);
   }
+}
+
+async function listingContainsCurrentUser(
+  listing: ReturnType<typeof getModerators>,
+  username: string
+): Promise<boolean> {
+  const expectedUsername = normalizeUsername(username);
+  const modList = await listing.all();
+
+  return modList.some((mod) => normalizeUsername(mod.username) === expectedUsername);
+}
+
+function normalizeUsername(username: string): string {
+  return username.replace(/^u\//i, '').toLowerCase();
 }
