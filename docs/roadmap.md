@@ -1,6 +1,6 @@
 # CampaignLens Roadmap
 
-CampaignLens v1.0.0 is the hackathon launch: deterministic campaign detection, explainable dossiers, review workflow, guarded moderation actions, and Reddit-ready Expanded Mode.
+CampaignLens v1.0.1 is the hackathon launch: deterministic campaign detection, explainable dossiers, review workflow, guarded moderation actions, and Reddit-ready Expanded Mode.
 
 ## Near-Term Improvements
 
@@ -12,7 +12,7 @@ CampaignLens v1.0.0 is the hackathon launch: deterministic campaign detection, e
 
 ## Hard-Version Direction
 
-These items are intentionally outside v1.0.0 because they need deeper safety review:
+These items are intentionally outside v1.0.1 because they need deeper safety review:
 
 - Semantic harmful-narrative classification with an LLM or Reddit-approved classifier path.
 - Multi-signal narrative clustering across related but non-identical wording.
