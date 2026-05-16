@@ -5,7 +5,6 @@ import { getModerators } from '../devvit/reddit-client';
 /**
  * Middleware: verify the requesting user is a moderator of the current subreddit.
  * Uses the Devvit adapter to read moderator membership for the current subreddit.
- * Non-empty listing = user is a moderator.
  */
 export async function requireModerator(c: Context, next: Next): Promise<Response | void> {
   const moderatorContext = requireCurrentModeratorContext();
@@ -15,10 +14,18 @@ export async function requireModerator(c: Context, next: Next): Promise<Response
   }
 
   try {
-    const mods = await getModerators(moderatorContext);
+    const mods = await getModerators({
+      subredditName: moderatorContext.subredditName,
+      username: moderatorContext.username,
+      limit: 1,
+    });
 
     const modList = await mods.all();
-    if (modList.length === 0) {
+    const isCurrentUserModerator = modList.some(
+      (mod) => mod.username.toLowerCase() === moderatorContext.username.toLowerCase()
+    );
+
+    if (!isCurrentUserModerator) {
       return c.json({ error: 'Forbidden: moderator access required' }, 403);
     }
 
