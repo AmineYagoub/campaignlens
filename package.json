@@ -1,8 +1,16 @@
 {
   "private": true,
   "name": "campaignlens",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmineYagoub/campaignlens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmineYagoub/campaignlens/issues"
+  },
+  "homepage": "https://github.com/AmineYagoub/campaignlens#readme",
   "type": "module",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
@@ -14,10 +22,10 @@
     "login": "devvit login",
     "prettier": "prettier --write .",
     "release:check-clean": "node -e \"const {execSync}=require('node:child_process'); const s=execSync('git status --porcelain',{encoding:'utf8'}).trim(); if(s){console.error('Working tree must be clean before release:\\n'+s); process.exit(1)}\"",
-    "release:github": "gh release create v$npm_package_version --title \"CampaignLens Atlas v$npm_package_version\" --notes-file docs/release-v$npm_package_version.md --verify-tag",
+    "release:github": "gh release create v$npm_package_version --title \"CampaignLens v$npm_package_version\" --notes-file docs/release-v$npm_package_version.md --verify-tag",
     "release:git": "npm run release:check-clean && npm run release:tag && npm run release:push-tag && npm run release:github",
     "release:push-tag": "git push origin v$npm_package_version",
-    "release:tag": "git tag -a v$npm_package_version -m \"CampaignLens Atlas v$npm_package_version\"",
+    "release:tag": "git tag -a v$npm_package_version -m \"CampaignLens v$npm_package_version\"",
     "test": "vitest run",
     "type-check": "tsc --build"
   },
