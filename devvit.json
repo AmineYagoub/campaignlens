@@ -9,20 +9,23 @@
     "dir": "dist/client",
     "entrypoints": {
       "default": {
-        "entry": "entry.html",
+        "entry": "preview.html",
         "inline": true,
-        "height": "tall"
+        "height": "regular"
+      },
+      "dashboard": {
+        "entry": "entry.html"
       }
     }
   },
   "menu": {
     "items": [
       {
-        "label": "Open CampaignLens Atlas",
+        "label": "Open CampaignLens",
         "description": "Open the campaign intelligence dashboard for this subreddit.",
         "location": "subreddit",
         "forUserType": "moderator",
-        "endpoint": "/internal/menu/open-atlas"
+        "endpoint": "/internal/menu/open-dashboard"
       }
     ]
   },
