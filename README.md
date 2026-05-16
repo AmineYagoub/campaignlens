@@ -1,24 +1,40 @@
 # CampaignLens
 
-CampaignLens is a Devvit-native moderator tool for spotting suspicious coordinated campaign patterns inside a subreddit. It turns repeated domains, brand mentions, harmful narrative watch terms, link obfuscation, timing bursts, near-duplicate phrasing, reports, and thread spread into explainable evidence dossiers.
+CampaignLens is a Devvit-native moderator tool for spotting suspicious coordinated campaign patterns inside a subreddit.
 
 Built for the [Reddit Mod Tools Migration Hackathon](https://mod-tools-migration.devpost.com).
 
-## v1.0.0 Launch
+## What is it?
 
-CampaignLens v1.0.0 is ready for hackathon submission, Reddit review, and GitHub release.
+- It turns repeated domains, brand mentions, harmful narrative watch terms, link obfuscation, timing bursts, near-duplicate phrasing, reports, and thread spread into explainable evidence dossiers.
+- It gives moderators a dashboard to inspect why a campaign surfaced, review evidence, tune local settings, preview Reddit moderation state, and manually execute supported actions.
+- It opens the full dashboard in user-initiated Expanded Mode so the inline Reddit post never traps scroll gestures.
 
-The app is evidence-first and moderator-controlled:
+## What isn't it?
 
-- No automatic bans, removals, locks, or accusations.
-- No stored usernames, moderator IDs, reporter IDs, author IDs, or author hashes.
-- No external LLM, embedding, analytics, or classifier calls.
-- Full dashboard opens in user-initiated Expanded Mode so the inline Reddit post never traps scroll gestures.
+- It is not an autonomous moderator.
+- It does not automatically ban, remove, lock, or accuse users.
+- It does not store usernames, moderator IDs, reporter IDs, author IDs, or author hashes.
+- It does not send content to external LLM, embedding, analytics, or classifier services.
 
-## Repository
+## How it works
+
+1. Install CampaignLens on a subreddit.
+2. Open the subreddit moderator menu and choose `Open CampaignLens`.
+3. Click `Open dashboard` in the launch post.
+4. Keep the default settings or tune thresholds, watchlists, allowlists, and evidence caps.
+5. When repeated campaign-shaped activity appears, open the dossier.
+6. Review the score breakdown, explanation, evidence, timeline, and replay.
+7. Select specific evidence items, preview the action, confirm, and execute only if appropriate.
+
+## Can I test it before installing?
+
+Yes. Use a test subreddit and follow the [Reddit playtest runbook](docs/reddit-playtest-runbook.md). For a fast test, create three separate posts that repeat the same harmless domain, such as `demo-campaign.example`.
+
+## Feedback and source
 
 - GitHub: [AmineYagoub/campaignlens](https://github.com/AmineYagoub/campaignlens)
-- Issues: [github.com/AmineYagoub/campaignlens/issues](https://github.com/AmineYagoub/campaignlens/issues)
+- Bugs and feature requests: [github.com/AmineYagoub/campaignlens/issues](https://github.com/AmineYagoub/campaignlens/issues)
 - Pull requests: [github.com/AmineYagoub/campaignlens/pulls](https://github.com/AmineYagoub/campaignlens/pulls)
 
 ## Docs
@@ -29,8 +45,17 @@ The app is evidence-first and moderator-controlled:
 - [Privacy summary](docs/privacy-summary.md)
 - [Permission matrix](docs/permission-matrix.md)
 - [Support and operations](docs/support-and-operations.md)
+- [Devpost submission notes](docs/devpost-submission-notes.md)
 - [Roadmap](docs/roadmap.md)
 - [v1.0.0 release notes](docs/release-v1.0.0.md)
+
+## Changelog
+
+### 1.0.0
+
+- Adds the complete trigger → dossier → evidence → preview → execute → history moderation loop.
+- Adds Expanded Mode dashboard launch to avoid inline scroll traps.
+- Adds local settings, diagnostics, privacy docs, permission matrix, support docs, and app icon.
 
 ## Development
 

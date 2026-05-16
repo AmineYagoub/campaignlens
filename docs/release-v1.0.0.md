@@ -35,6 +35,7 @@ CampaignLens was built for the [Reddit Mod Tools Migration Hackathon](https://mo
 - Diagnostics report app version, Redis/config/baseline/memory health, active dossier count, and action history count.
 - API routes return structured JSON errors for moderator-only diagnostics and review screens.
 - Configuration updates reject out-of-range numeric values before saving.
+- App icon is included at `assets/icon.png` and wired through `devvit.json` marketing assets.
 
 ## Safety Properties
 
