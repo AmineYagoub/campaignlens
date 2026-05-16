@@ -1,7 +1,7 @@
 import { submitCustomPost } from './reddit-client';
 
-const DASHBOARD_TITLE = 'CampaignLens Atlas';
-const DASHBOARD_TEXT = 'CampaignLens Atlas moderator dashboard.';
+const DASHBOARD_TITLE = 'CampaignLens';
+const DASHBOARD_TEXT = 'CampaignLens moderator dashboard.';
 
 export const MENU_HANDLER_VERSION = '2026-05-14-menu-sdk-adapter-v1';
 
